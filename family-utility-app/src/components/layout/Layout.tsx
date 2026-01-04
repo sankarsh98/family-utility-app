@@ -5,7 +5,6 @@ import {
   Train, 
   Pill, 
   Home, 
-  User,
   LogOut,
   Menu,
   X

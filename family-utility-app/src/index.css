@@ -16,7 +16,7 @@ body {
   font-family: 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+  background: linear-gradient(135deg, #FFF5E6 0%, #FFFEF5 50%, #E8F5E9 100%);
   min-height: 100vh;
 }
 
@@ -48,25 +48,33 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-/* Gradient backgrounds */
+/* Gradient backgrounds - Indian Theme */
 .gradient-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #FF9933 0%, #D4AF37 100%);
 }
 
 .gradient-secondary {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  background: linear-gradient(135deg, #138808 0%, #0D7C00 100%);
 }
 
 .gradient-success {
-  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  background: linear-gradient(135deg, #138808 0%, #22c55e 100%);
 }
 
 .gradient-train {
-  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+  background: linear-gradient(135deg, #FF9933 0%, #880E4F 100%);
 }
 
 .gradient-medicine {
-  background: linear-gradient(135deg, #22c55e 0%, #14b8a6 100%);
+  background: linear-gradient(135deg, #138808 0%, #14b8a6 100%);
+}
+
+.gradient-maroon {
+  background: linear-gradient(135deg, #880E4F 0%, #600837 100%);
+}
+
+.gradient-gold {
+  background: linear-gradient(135deg, #D4AF37 0%, #B8912A 100%);
 }
 
 /* Animation classes */
@@ -150,8 +158,7 @@ body {
 /* Input focus styles */
 input:focus, select:focus, textarea:focus {
   outline: none;
-  ring: 2px;
-  ring-color: #2563eb;
+  box-shadow: 0 0 0 2px #2563eb;
 }
 
 /* Safe area for mobile devices */

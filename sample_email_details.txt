@@ -1,0 +1,14 @@
+
+PNR No. :	4938302790	Train No. / Name :	12733 / NARAYANADRI SF	Quota :	GENERAL
+Transaction ID :	100006283631263	Date & Time of Booking :	03-Jan-2026 09:17:40 PM HRS	Class :	SLEEPER CLASS
+From :	NELLORE (NLR)	Date of Journey :	10-Feb-2026	To :	LINGAMPALLI (LPI)
+Boarding At :	NLR	Date Of Boarding :	10-Feb-2026	Scheduled Departure* :	N.A.
+Reservation Up to :	LINGAMPALLI ( LPI)	Scheduled Arrival :	N.A.	Adult:  2	Child:  0
+Passenger Mobile No :	9246885254	Distance :	552KM	Insurance (No. of Psng) :	2		
+Passenger Details
+Sl. No.	Name	Age	Gender	Catering Service Option	Status	Coach	Seat / Berth / WL No
+1	P NARENDER RAJU	53	Male	N/A	CNF	S6 	10 
+2	P BRAMARAMBHA	48	Female	N/A	CNF	S6 	11 
+Fare Details (Inclusive of GST)
+Ticket Fare	Convenience Fee	Travel Insurance Premium	Total Fare	# Agent Charges as applicable, if any.
+Rs. 750.00	Rs. 17.70	Rs. 0.90	Rs. 768.60 *#

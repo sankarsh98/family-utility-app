@@ -1,0 +1,268 @@
+Delivered-To: sankarshpallela@gmail.com
+Received: by 2002:a05:6400:a089:b0:2bf:713c:b3d1 with SMTP id f9csp2056840ecf;
+        Sat, 3 Jan 2026 07:41:28 -0800 (PST)
+X-Google-Smtp-Source: AGHT+IGvZMmyBEQEE53nNr6g+X5BhsxnuIepy6XugxMxdBnnANYBRw5b4SrZmZXkHoQxsw5pUNsh
+X-Received: by 2002:a05:6a20:12c9:b0:34e:e0ba:7ab with SMTP id adf61e73a8af0-376aa4fc463mr47868238637.40.1767454887651;
+        Sat, 03 Jan 2026 07:41:27 -0800 (PST)
+ARC-Seal: i=1; a=rsa-sha256; t=1767454887; cv=none;
+        d=google.com; s=arc-20240605;
+        b=GwNrDILEmAxDQJe7BS7ZPPsF+60lEda7X05kGencmeXplEqaflVKJ+bkHO8U5ZyW1q
+         D4vI+YRAh4CYmbkcIninR3B6p/slblmqvHhwSejSh7g+pSrUD3IrfnD3dmj7gpGAigy2
+         QK+kG9clhDwmC9zPN68jXoM8BqveiJxdZw7sUXIs3ci/Uq55W2Pcr8o6DBSKVKYzStr9
+         xVUziHp0rpy+bye9deu1KDzb727GC1Phdoc9SFG2Ly45H90bmX0jCdw+HoeqtnGPZN7z
+         j2rDZfoiJLjyACDU7LsnvWuClhNfS1tvr8e9qmyH6ofZ3Tr/CuG2Rt0k3vjeSkqK8y4Q
+         q5bA==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
+        h=date:content-transfer-encoding:mime-version:subject:message-id:to
+         :from:dkim-signature:dkim-filter;
+        bh=XVP8rCRkDrQibHpuPPoHg88JDaLUPuWkAUCAlBNeOaM=;
+        fh=1evdPxjTjZuX904DvOGbJiL1pxHW4I2742MzCMLI488=;
+        b=HNKjdCV6wk8Cv9ewN30+payURYTmKxK4UB38+Qyqim7UOyj1E9elUZH8XBriWVdK0G
+         WbbRaHT7HNTT18qoWqD45zpNTHod7Mz61aO+Mo96VO72/77yZ32XZTNBpFMcPfQoHQ0V
+         uFxQwCv+qyg/aM9ElAHAeMmjBUZ/hH6exu5jinll34EfZv/mln0a9chIzU3EP1JMklMO
+         mnzxusca24cfaHhLTWI5VxeJ982CBEwdGCvCM4D+4LiPmwviGpoazbuxM0RvYoVhtWdP
+         a0F1Ms+O6Lmaf4at1AKZsSZnSs3TQTMTI1It1W/qss6IFwdfv10Gpn4GLTMfire+lBtv
+         uObA==;
+        dara=google.com
+ARC-Authentication-Results: i=1; mx.google.com;
+       dkim=pass header.i=@irctc.co.in header.s=eticketm header.b=JlBfmDVC;
+       spf=pass (google.com: domain of ticketadmin@irctc.co.in designates 103.252.142.31 as permitted sender) smtp.mailfrom=ticketadmin@irctc.co.in;
+       dmarc=pass (p=QUARANTINE sp=QUARANTINE dis=NONE) header.from=irctc.co.in
+Return-Path: <ticketadmin@irctc.co.in>
+Received: from ngetrsml03.irctc.co.in (mail.nget.irctc.co.in. [103.252.142.31])
+        by mx.google.com with ESMTPS id 41be03b00d2f7-c1e7d7a3fbcsi58511900a12.454.2026.01.03.07.41.27
+        for <sankarshpallela@gmail.com>
+        (version=TLS1_2 cipher=ECDHE-ECDSA-AES128-GCM-SHA256 bits=128/128);
+        Sat, 03 Jan 2026 07:41:27 -0800 (PST)
+Received-SPF: pass (google.com: domain of ticketadmin@irctc.co.in designates 103.252.142.31 as permitted sender) client-ip=103.252.142.31;
+Authentication-Results: mx.google.com;
+       dkim=pass header.i=@irctc.co.in header.s=eticketm header.b=JlBfmDVC;
+       spf=pass (google.com: domain of ticketadmin@irctc.co.in designates 103.252.142.31 as permitted sender) smtp.mailfrom=ticketadmin@irctc.co.in;
+       dmarc=pass (p=QUARANTINE sp=QUARANTINE dis=NONE) header.from=irctc.co.in
+Received: from ngetrsm103.irctc.co.in (ngetrsml03.irctc.co.in [10.79.2.101])
+	by ngetrsml03.irctc.co.in (Postfix) with ESMTP id 96CE3600170B
+	for <sankarshpallela@gmail.com>; Sat,  3 Jan 2026 21:11:25 +0530 (IST)
+DKIM-Filter: OpenDKIM Filter v2.11.0 ngetrsml03.irctc.co.in 96CE3600170B
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=irctc.co.in;
+	s=eticketm; t=1767454885;
+	bh=XVP8rCRkDrQibHpuPPoHg88JDaLUPuWkAUCAlBNeOaM=;
+	h=From:To:Subject:Date:From;
+	b=JlBfmDVCWpQB5rOoIAQdApqcAUVI1Gy8xrfpn2qzxH5tCHOOZBH5FbyVxaTILdBKw
+	 kD1dqV+rJtatRI9ktysf7D2/l4JVFDFCeP1gY+AjfG/7WjUs79ID3GI+5QwAwhTLZB
+	 wiB/rsc9X41XRpMdMnY3wZuBi+kA6FXPijmczOjw=
+From: ticketadmin@irctc.co.in
+To: sankarshpallela@gmail.com
+Message-ID: <1138752819.2655150.1767454885472@ngetrsm103.irctc.co.in>
+Subject: Booking Confirmation on IRCTC, Train: 12733, 10-Feb-2026, SL, TPTY
+ - NLR
+MIME-Version: 1.0
+Content-Type: text/html; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
+Date: Sat,  3 Jan 2026 21:11:25 +0530 (IST)
+
+<div id=3D"ircp_confirmation_div" style=3D"font-color:black;"><table width=
+=3D"100%"><tbody><tr><td colspan=3D'2' style=3D"font:10px arial; color:#333=
+; text-align:justify"><hr style=3D"margin: 0px !important;"><b>This is a sy=
+stem generated mail. Please do not reply to this email ID. (1) Call our 24-=
+hour Customer Care (2) For IRCTC related queries use - {0} </b><hr style=3D=
+"margin: 0px !important;"></td></tr><tr><td><div style=3D"font:bold 14px ar=
+ial;color:red;margin:0;padding:0"><span>From 01st July 2025, Aadhaar authen=
+tication of IRCTC user profile is mandatory to book Tatkal and Premium Tatk=
+al tickets.</span></div></td></tr><tr><td style=3D"border-bottom:1px solid =
+#ccc;font:10px arial;"><div style=3D"font:bold 12px arial;color:#0099ff;mar=
+gin:0;padding:0"><span>Ticket Confirmation</span></div></td><td style=3D"fo=
+nt:bold 12px arial;color:#0099ff;border-bottom:1px solid #ccc;"><img src=3D=
+"data:image/jpg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4QDQRXhpZgAASUkqAAgAAAAD=
+ABIBAwABAAAAAQAAADEBAgAHAAAAMgAAAGmHBAABAAAAOgAAAAAAAABQaWNhc2EAAAYAAJAHAAQ=
+AAAAwMjIwAaADAAEAAAABAAAAAqAEAAEAAAAtAAAAA6AEAAEAAAAsAAAABaAEAAEAAACqAAAAIK=
+QCACEAAACIAAAAAAAAADAwN2E4NmMwYjY3YWJlYjMwMDAwMDAwMDAwMDAwMDAwAAACAAEAAgAEA=
+AAAUjk4AAIABwAEAAAAMDEwMAAAAAD/4QEiaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wLwA8=
+P3hwYWNrZXQgYmVnaW49Iu+7vyIgaWQ9Ilc1TTBNcENlaGlIenJlU3pOVGN6a2M5ZCI/PiA8eDp=
+4bXBtZXRhIHhtbG5zOng9ImFkb2JlOm5zOm1ldGEvIiB4OnhtcHRrPSJYTVAgQ29yZSA1LjEuMi=
+I+IDxyZGY6UkRGIHhtbG5zOnJkZj0iaHR0cDovL3d3dy53My5vcmcvMTk5OS8wMi8yMi1yZGYtc=
+3ludGF4LW5zIyI+IDxyZGY6RGVzY3JpcHRpb24gcmRmOmFib3V0PSIiLz4gPC9yZGY6UkRGPiA8=
+L3g6eG1wbWV0YT4gICA8P3hwYWNrZXQgZW5kPSJ3Ij8+/+wAEUR1Y2t5AAEABAAAAGQAAP/bAIQ=
+AAwICAwICAwMDAwQDAwQFCAUFBAQFCgcHBggMCgwMCwoLCw0OEhANDhEOCwsQFhARExQVFRUMEx=
+cYFhQTExQVEAEDBAQFBAUKBgYKEw0LDg8PFA8UEA4QDxQQFA8UEA4OEBQUEA4QDxQQERAPEAwPF=
+BQUDxQQDA4MDBQUDQwNDAwM/8AAEQgALAAtAwERAAIRAQMRAf/EABsAAAEFAQEAAAAAAAAAAAAA=
+AAgEBQYHCQEC/8QAMRAAAQMCBQIDBwQDAAAAAAAAAQIDBAURAAYHEjEIIRNBURQVIjJhcZFSYoG=
+xF0Jy/8QAGwEAAQUBAQAAAAAAAAAAAAAABgABBAUHAgP/xAArEQABAwQCAgEDAwUAAAAAAAABAA=
+IEAwURIRIxQVEiEzLRkcHwFEJhcbH/2gAMAwEAAhEDEQA/ANUMMUk11+qe6Ke8+GHZTqRZqOyLr=
+dWeEi/a59TxhBod30uHuIGhlDVql07at6zoelVPUdjLiSCY+XqWhwRWQeEuOgpU4r1Va3oLYJ4F=
+xgwRqjyPsqglQ5Uo6fxQtUzUDVTo81LRS6vMkyorRS4/S35Cnos6OTbe0VfKe3YixB7EYMnR4F9=
+jF7GcXe0NiRKtNcNe7kFpnk/MsHOWWqZXqY4HqfUYyJLK/wBqhcA/UcYymsx1GoaZ8LQKNRtZgq=
+NHae+ccr2XlawhO4kAAXJJsBhYJSyB2oxUs90aNISy04ufJHytREFZ/PGFnj3/ADC5+5KIk6sz7=
+KTTWoDJ4Mt3cu3/ACnj8445AgYTkAdFV/rd025d18j0k5helR5VOKyzJp5S2opXbchVwbpuAcW1=
+uuci29HZ77wq2dApSxsbSjTyi/4f9x5ApjzkyjxkbWXpp3P7VFSiCRYdjfyxDlSXSqpe4bPeFLj=
+xxGbxB0rZx4bUhU/r7qrlLIECkwcx1tVMlVGUhthhob1qSVBKlrSOGxfuo8WxPiQa8wuNMaAUGT=
+LoxQ0VPKsPLWXabQoyBBbSrxAFe0EhSnL+d/T7YrTrvsa/VTOQLteQsms26u55pOolf9gzhXmVs=
+VWQlhDc5w2s6oABN7G1uLH7Y2qjbobozObMfD0sxqTJQrvAPRV+qzRmMa5aEv1Kr1Cn12tNsPV+=
+iIkuIaS74hSha2b2QXEWJTby4wKtj0jBkvDcgH4O99K++vUEmi3lv+5GhJh+1amxl8iLC8RR9Lk=
+gf3gBB/XyjEDi3vSlzcpC1LQLFSDZQB4w4ymLmhZORI9X6p+pREOqy3QqrVFba1L5jQ2ySW0Dys=
+gED9xxseadktLjTG3DtZoWPus5rXn7VqJTmYmSadTac0lTFFjMtxWHVqKvBCQEpSsnysB39cY2/=
+kR7JK0poGcNHhZ9UrQPXHI2rFXzVl/JntSHZ8laW35DBakx1uElJ+O6bpIsoWUk9wcau+4W2VFb=
+QfVDcAZ78f6Cz8QZtCu97aeQT/j8qX5b6U86UHXXI2dolJnqojtRbmz4tUloemUxST8aHHNx8VH=
+6Vgkkci+Kh93o1IFWNyHLHe/lvxr8KwZbatOU2qB8fXpG/SmErqVSnqsVPKS0g2/0QPL7ndjPc8=
+SQ4YRkzLgPlkIaeoTqnGjOq0mkQ3Eyw5T4y32m/iLLu52+70JQWzbBXbLLUnUebRrKHJ11bFq8E=
+wZ86YMyaW62QdUtNYQrsREtUybl4uJQ8kruHQyTYKSoKJCb3B+mJ0e8Mk28wpWj4Kj1ra+PL/qI=
++x5CKPLOd6VnSnJQqPKhvuJ2v06qxVsvNnzSpKhY/cXGAx1L6RLWnroolZW5jJG/+JFNTV8jKU5=
+DSqqUO+7wFG7kcegPNseQaMnPlSMpmz9rJ7m05rtYy/TJtZrkWMVx6awwpay4ewUbXG0E3NvIYl=
+R6TZFYU3nDdZUWQ91KjzaMkdIEH+sfXWZD90pfLMs/AVxqJskd+3YWNj/GNNFls7XB/wBTXo7/A=
+GQI+53B7S0N37Ctnpq6QJWbaFVsz6oR5zVUqryHIzE03k7AFFTjt7kKUVcHuAkYp7pf2xaopQ9M=
+AVlDtTpFP6lY7KOhIFr2wA8QTlGLzx0F1PJ+nGHztPgYXVfKo/TCTFI4tJhwJDr8aM2w6+R4ikJ=
+tut64WN5SH24Sj2ZoOb/CRv8A1bRf8455E5TcGjwuqAB4x0ACMlerRgL/2Q=3D=3D" alt=3D"I=
+RCTC" style=3D"float:right" /></td></tr></tbody></table><span style=3D"font=
+:11px arial;"><b>Dear Customer,</b></span><span style=3D"text-align: justif=
+y;color:#000000;font:10px arial;">Thank you for using IRCTC's online rail r=
+eservation facility. Your booking details are indicated below.</span><table=
+ width=3D"100%" cellpadding=3D"4"><td style=3D"border-bottom:1px solid #ccc=
+;font:9px arial;"><b>PNR No. :</b></td><td style=3D"border-bottom:1px solid=
+ #ccc;font:9px arial;"><span>4431165697</span></td><td style=3D"border-bott=
+om:1px solid #ccc;font:9px arial;"><b>Train No. / Name : </b></td><td style=
+=3D"border-bottom:1px solid #ccc;font:9px arial;"><span>12733 / NARAYANADRI=
+ SF</span></td><td style=3D"border-bottom:1px solid #ccc;font:9px arial;"><=
+b>Quota : </b> </td><td style=3D"border-bottom:1px solid #ccc;font:9px aria=
+l;"><span>GENERAL </span> </td></tr><tr><tr><td style=3D"border-bottom:1px =
+solid #ccc;font:9px arial;"><b>Transaction ID : </b></td><td style=3D"borde=
+r-bottom:1px solid #ccc;font:9px arial;"> <span>100006283631192</span></td>=
+<td style=3D"border-bottom:1px solid #ccc;font:9px arial;"><b>Date & Time o=
+f Booking : </b></td><td style=3D"border-bottom:1px solid #ccc;font:9px ari=
+al;"><span>03-Jan-2026 09:11:24 PM HRS</span></td><td style=3D"border-botto=
+m:1px solid #ccc;font:9px arial;"><b>Class : </b></td><td style=3D"border-b=
+ottom:1px solid #ccc;font:9px arial;"><span>SLEEPER CLASS</span></td> </tr>=
+<tr> <td style=3D"border-bottom:1px solid #ccc;font:9px arial;"><b>From : <=
+/b> </td><td style=3D"border-bottom:1px solid #ccc;font:9px arial;"><span>T=
+IRUPATI (TPTY)</span></td><td style=3D"border-bottom:1px solid #ccc;font:9p=
+x arial;"><b>Date of Journey : </b></td><td style=3D"border-bottom:1px soli=
+d #ccc;font:9px arial;"><span>10-Feb-2026</span></td> <td style=3D"border-b=
+ottom:1px solid #ccc;font:9px arial;"><b>To : </b> </td><td style=3D"border=
+-bottom:1px solid #ccc;font:9px arial;"><span>NELLORE (NLR)</span></td> </t=
+r><tr> <td style=3D"border-bottom:1px solid #ccc;font:9px arial;"><b>Boardi=
+ng At : </b> </td><td style=3D"border-bottom:1px solid #ccc;font:9px arial;=
+"><span>TPTY</span></td><td style=3D"border-bottom:1px solid #ccc;font:9px =
+arial;"><b>Date Of Boarding : </b> </td><td style=3D"border-bottom:1px soli=
+d #ccc;font:9px arial;"><span>10-Feb-2026</span> </td> <td style=3D"border-=
+bottom:1px solid #ccc;font:9px arial;"><b>Scheduled Departure* : </b> </td>=
+<td style=3D"border-bottom:1px solid #ccc;font:9px arial;"><span>N.A.</span=
+></td> </tr><tr><td style=3D"border-bottom:1px solid #ccc;font:9px arial;">=
+<b>Reservation Up to :</b></td><td style=3D"border-bottom:1px solid #ccc;fo=
+nt:9px arial;"><span>NELLORE ( NLR)</span></td><td style=3D"border-bottom:1=
+px solid #ccc;font:9px arial;"><b>Scheduled Arrival :</b></td><td style=3D"=
+border-bottom:1px solid #ccc;font:9px arial;"><span>N.A.</span></td><td sty=
+le=3D"border-bottom:1px solid #ccc;font:9px arial;"><b>Adult: </b>&nbsp;2</=
+td><td style=3D"border-bottom:1px solid #ccc;font:9px arial;"><b>Child: </b=
+> &nbsp;0</td> </tr><tr><td style=3D"border-bottom:1px solid #ccc;font:9px =
+arial;"><b>Passenger Mobile No :</b></td><td style=3D"border-bottom:1px sol=
+id #ccc;font:9px arial;"><span>9246885254</span></td><td style=3D"border-bo=
+ttom:1px solid #ccc;font:9px arial;"><b>Distance :</b></td><td style=3D"bor=
+der-bottom:1px solid #ccc;font:9px arial;"><span>132KM</span></td><td style=
+=3D"border-bottom:1px solid #ccc;font:9px arial;"><b>Insurance (No. of Psng=
+) : </b> </td><td style=3D"border-bottom:1px solid #ccc;font:9px arial;"><s=
+pan>2</span> </td><td style=3D"border-bottom:1px solid #ccc;font:9px arial;=
+"><b></b> </td><td style=3D"border-bottom:1px solid #ccc;font:9px arial;"><=
+span></span> </td></tr><tr></tr></table><div style=3D"font:bold 12px arial;=
+color:#0099ff;margin:0;padding:0"><span>Passenger Details</span></div><hr s=
+tyle=3D"margin: 0px !important;"><table width=3D"100%" cellpadding=3D"4"><t=
+body><tr align=3D"left" style=3D"background-color:#F0F3FF;"><td style=3D"fo=
+nt-size:9px;"><b>Sl. No.</b></td><td style=3D"font-size:9px;"><b>Name</b></=
+td><td style=3D"font-size:9px;"><b>Age</b></td><td style=3D"font-size:9px;"=
+><b>Gender</b></td><td style=3D"font-size:9px;"><b>Catering Service Option<=
+/b></td><td style=3D"font-size:9px;"><b>Status</b></td><td style=3D"font-si=
+ze:9px;"><b>Coach</b></td><td style=3D"font-size:9px;"><b>Seat / Berth / WL=
+ No</b></td></tr><tr><td style=3D"border-bottom:1px solid #ccc;font:9px ari=
+al;">1</td><td style=3D"border-bottom:1px solid #ccc;font:9px arial;">P NAR=
+ENDER RAJU</td><td style=3D"border-bottom:1px solid #ccc;font:9px arial;">5=
+3</td><td style=3D"border-bottom:1px solid #ccc;font:9px arial;">Male</td><=
+td style=3D"border-bottom:1px solid #ccc;font:9px arial;">N/A</td><td style=
+=3D"border-bottom:1px solid #ccc;font:9px arial;">CNF</td><td style=3D"bord=
+er-bottom:1px solid #ccc;font:9px arial;">S6&nbsp;</td><td style=3D"border-=
+bottom:1px solid #ccc;font:9px arial;">27&nbsp;</td></tr><tr><td style=3D"b=
+order-bottom:1px solid #ccc;font:9px arial;">2</td><td style=3D"border-bott=
+om:1px solid #ccc;font:9px arial;">P BRAMARAMBHA</td><td style=3D"border-bo=
+ttom:1px solid #ccc;font:9px arial;">48</td><td style=3D"border-bottom:1px =
+solid #ccc;font:9px arial;">Female</td><td style=3D"border-bottom:1px solid=
+ #ccc;font:9px arial;">N/A</td><td style=3D"border-bottom:1px solid #ccc;fo=
+nt:9px arial;">CNF</td><td style=3D"border-bottom:1px solid #ccc;font:9px a=
+rial;">S6&nbsp;</td><td style=3D"border-bottom:1px solid #ccc;font:9px aria=
+l;">29&nbsp;</td></tr></tbody></table><div style=3D"font:bold 12px arial;co=
+lor:#0099ff;margin:0;padding:0"><span>Fare Details (Inclusive of GST)</span=
+></div><hr style=3D"margin: 0px !important;"><table width=3D"100%" cellpadd=
+ing=3D"4"><tbody><tr align=3D"left" style=3D"background-color:#F0F3FF;"><td=
+ style=3D"font-size:9px;"><b>Ticket Fare</b></td><td style=3D"font-size:9px=
+;"><b>Convenience Fee</b></td><td style=3D"font-size:9px;"><b>Travel Insura=
+nce Premium</b></td><td style=3D"font-size:10px;"><b>Total Fare</b></td><td=
+ style=3D"font-size:9px;"><b># Agent Charges as applicable, if any.</b></td=
+></tr><tr><td style=3D"border-bottom:1px solid #ccc;font:9px arial;">Rs. 36=
+0.00 </td><td style=3D"border-bottom:1px solid #ccc;font:9px arial;">Rs. 17=
+.70</td><td style=3D"border-bottom:1px solid #ccc;font:9px arial;">Rs. 0.90=
+ </td><td style=3D"border-bottom:1px solid #ccc;font:9px arial;">Rs. 378.60=
+ *#</td></tr></tbody></table><span style=3D"font-size:9px; background-color=
+:white;"><b>* Payment Gateway charges as applicable.</b><span><table width=
+=3D"100%"><tbody><tr><td align=3D"center"><img src=3D'https://contents.irct=
+c.co.in/irctc/en/BkgMailLoyalty1.jpeg' style=3D'width:485px;'></td><td alig=
+n=3D"center"><img src=3D'https://contents.irctc.co.in/irctc/en/BkgMailLoyal=
+ty2.jpeg' style=3D'width:485px;'></td></tr><tr><td align=3D"center"><img sr=
+c=3D'https://contents.irctc.co.in/irctc/en/BkgMailLoyalty3.jpeg' style=3D'w=
+idth:485px;'></td><td align=3D"center"><img src=3D'https://contents.irctc.c=
+o.in/irctc/en/BkgMailLoyalty4.jpeg' style=3D'width:485px;'></td></tr></tbod=
+y></table><span style=3D"text-align: justify; font:bold 12px arial;color:#0=
+099ff;margin:0;padding:0">Must Read</span><hr style=3D"margin: 0px !importa=
+nt;"><ul style=3D"margin: 0px !important;"><li><span style=3D"text-align: j=
+ustify; font:9px arial; color:#000000">Please take a screenshot of ERS i.e.=
+ Virtual Reservation Message(VRM) OF YOUR TICKET FROM YOUR Booked Tickets H=
+istory page .You have to carry this VRM or SMS send to you along with any G=
+ovt. authorized ID Card during train journey in original. Both theSMS(or VR=
+M)& original ID will be examined by ticket checking staff on stations/train=
+s for verification purpose. <a href=3D'http://contents.irctc.co.in/en/listO=
+fGovtAuthorizedIDCards.pdf' target=3D'_blank'>List of Govt. authorized ID C=
+ards permissible for undertaking journey on reserved tickets.</a></span></l=
+i><li><span style=3D"text-align: justify; font:9px arial; color:#000000">Th=
+is ticket is booked on a personal user ID and can not be sold by an agent. =
+If bought from an agent by any individual, it is at his/her own risk</span>=
+</li><li><span style=3D"text-align: justify; font:9px arial; color:#000000"=
+>Passengers are advised not to carry inflammable/dangerous/explosive articl=
+es as part of their luggage and also to desist from smoking in the trains.<=
+/span></li></ul><span style=3D"text-align: justify; font:bold 12px arial;co=
+lor:#0099ff;margin:0;padding:0">How to</span><hr style=3D"margin: 0px !impo=
+rtant;"><table style=3D"width: 50%;"><tbody><tr><td style=3D"width: 70%;bor=
+der-right: 1px solid #ccc;"><ul style=3D"margin: 0px !important;"><li style=
+=3D"text-align: justify; font:9px arial; color:#000000"><a href=3D'http://c=
+ontents.irctc.co.in/en/cancelYourEticketOrFileTDR.pdf' target=3D'_blank'>Ca=
+ncel your e-ticket/ File TDR for e-ticket</a></li><li style=3D"text-align: =
+justify; font:9px arial; color:#000000"><a href=3D'http://contents.irctc.co=
+.in/en/changeBoardingPointOnEticket.pdf' target=3D'_blank'>Change boarding =
+point on e-ticket</a></li><li style=3D"text-align: justify; font:9px arial;=
+ color:#000000"><a href=3D'http://contents.irctc.co.in/en/changeInNameOnRes=
+ervedTicket.pdf' target=3D'_blank'>Change in name on a reserved ticket</a><=
+/li></ul></td><td><ul style=3D"margin-top: 0px !important;"><li style=3D"te=
+xt-align: justify; font:9px arial; color:#000000"><a href=3D'http://content=
+s.irctc.co.in/en/REFUND%20RULES%20wef%2012-Nov-15.pdf' target=3D'_blank'>Ra=
+ilway Refund Rules</a></li></ul></td></tr></tbody></table><span style=3D"te=
+xt-align: justify; font:bold 12px arial;color:#0099ff;margin:0;padding:0">C=
+ustomer Care</span><hr style=3D"margin: 0px !important;"><ul style=3D"margi=
+n: 0px !important;"><li><span style=3D"text-align: justify; font:9px arial;=
+ color:#000000"> In case you require any further assistance ,please raise y=
+our query at <b> https://equery.irctc.co.in or call us at 14646 / 080446479=
+99 / 08035734999  ( 24*7 Hrs ; Language: Hindi or English). </b></span></li=
+><li><span style=3D"color:#646464; font:9px arial;">Just dial 139 from your=
+ landline, mobile & CDMA phones for railway enquiries.</span></li><li><span=
+ style=3D"text-align: justify; font:9px arial; color:#757575">For any enqui=
+ries or information regarding your transaction with IRCTC, do not provide y=
+our credit/debit card details by any means to IRCTC. All your queries can b=
+e replied on the basis of 15 digit IRCTC Transaction id/ 10 digit PNR no./ =
+User id. IRCTC does not store the credit/ debit card information in any for=
+m during the transaction.</span></li></ul><span style=3D"text-align: justif=
+y; font:bold 12px arial;color:#0099ff;margin:0;padding:0">Book Hotels</span=
+><hr style=3D"margin: 0px !important;"><p><b>Booked your train ticket, now =
+complete it with booking the hotels on IRCTC website for a wonderful stay. =
+<a href=3D"https://www.hotels.irctc.co.in/" target=3D"_blank">"Book Now!"</=
+a></b></p><p style=3D"text-align: justify; font:10px arial; color:#000000">=
+To book and get food delivered on your train berth, please call IRCTC Toll =
+free No. 1323 or log in at <a href=3D'www.ecatering.irctc.co.in' target=3D'=
+_blank'>www.ecatering.irctc.co.in</a></p><p style=3D"font:10px arial; color=
+:#757575"><b>**************************************************************=
+***************************************************************************=
+***************************</b></p><p style=3D"color:#0099ff;font:bold 12px=
+ arial"><b>Please don't print unless extremely necessary.</b></p><p><b>Warm=
+ Regards,<br/>Customer Care<br/>Internet Ticketing<br/>IRCTC</b></p><br/></=
+div>

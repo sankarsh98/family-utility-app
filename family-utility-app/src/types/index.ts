@@ -1,9 +1,13 @@
+// User roles for RBAC
+export type UserRole = 'superadmin' | 'admin' | 'read_only';
+
 // User types
 export interface User {
   uid: string;
   email: string | null;
   displayName: string | null;
   photoURL: string | null;
+  role: UserRole;
 }
 
 // Train Ticket types

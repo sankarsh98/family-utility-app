@@ -6,7 +6,6 @@ import {
   Search, 
   Train, 
   MapPinned,
-  Calendar,
   Ticket,
   ChevronRight,
   Upload
@@ -18,23 +17,27 @@ import { TicketUploader } from '../components/trains/TicketUploader';
 import { PNRChecker } from '../components/trains/PNRChecker';
 import { TripCard } from '../components/trips/TripComponents';
 import { useTicketStore } from '../store/ticketStore';
+import { useAuthStore } from '../store/authStore';
 import { TrainTicket, Trip, Passenger } from '../types';
 import { TRAIN_CLASSES } from '../config/constants';
 import { format } from 'date-fns';
+import toast from 'react-hot-toast';
 
 type TabType = 'tickets' | 'trips' | 'pnr';
 
 export const TrainsPage: React.FC = () => {
   const navigate = useNavigate();
   const { 
-    tickets, 
     trips,
-    loading, 
     filters,
     fetchTickets,
     fetchTrips,
     addTicket,
+    updateTicket,
+    deleteTicket,
     addTrip,
+    updateTrip,
+    deleteTrip,
     setFilters, 
     clearFilters,
     getFilteredTickets,
@@ -42,11 +45,16 @@ export const TrainsPage: React.FC = () => {
     getRecentTickets
   } = useTicketStore();
 
+  const { canEdit } = useAuthStore();
+
   const [activeTab, setActiveTab] = useState<TabType>('tickets');
   const [showUploader, setShowUploader] = useState(false);
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [showAddTrip, setShowAddTrip] = useState(false);
   const [quickFilter, setQuickFilter] = useState<'all' | 'upcoming' | 'recent'>('all');
+  const [editingTicket, setEditingTicket] = useState<TrainTicket | null>(null);
+  const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'ticket' | 'trip', id: string } | null>(null);
 
   useEffect(() => {
     fetchTickets();
@@ -75,29 +83,32 @@ export const TrainsPage: React.FC = () => {
   ];
 
   return (
-    <div className="pb-20">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-primary-600 to-purple-600 text-white px-4 py-6">
-        <h1 className="text-2xl font-bold mb-4">Train Tickets</h1>
-        
-        {/* Tabs */}
-        <div className="flex gap-2">
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as TabType)}
-              className={`
-                flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all
-                ${activeTab === tab.id 
-                  ? 'bg-white text-primary-600' 
-                  : 'bg-white/20 hover:bg-white/30'
-                }
-              `}
-            >
-              <tab.icon className="w-4 h-4" />
-              {tab.label}
-            </button>
-          ))}
+    <div className="min-h-screen pb-20 bg-gradient-to-br from-cream-500 via-primary-50 to-secondary-50 bg-indian-pattern">
+      {/* Header with Indian styling */}
+      <div className="bg-gradient-to-r from-primary-500 via-primary-600 to-maroon-500 text-white px-4 py-6 relative overflow-hidden shadow-lg">
+        <div className="absolute inset-0 bg-indian-pattern opacity-10"></div>
+        <div className="relative">
+          <h1 className="text-2xl font-bold mb-4">Train Tickets</h1>
+          
+          {/* Tabs */}
+          <div className="flex gap-2">
+            {tabs.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as TabType)}
+                className={`
+                  flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all
+                  ${activeTab === tab.id 
+                    ? 'bg-white text-primary-600 shadow-lg' 
+                    : 'bg-white/20 hover:bg-white/30'
+                  }
+                `}
+              >
+                <tab.icon className="w-4 h-4" />
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -146,24 +157,26 @@ export const TrainsPage: React.FC = () => {
               </div>
 
               {/* Add buttons */}
-              <div className="flex gap-2 mb-4">
-                <Button
-                  variant="primary"
-                  onClick={() => setShowUploader(true)}
-                  icon={<Upload className="w-4 h-4" />}
-                  className="flex-1"
-                >
-                  Upload Ticket
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowManualEntry(true)}
-                  icon={<Plus className="w-4 h-4" />}
-                  className="flex-1"
-                >
-                  Manual Entry
-                </Button>
-              </div>
+              {canEdit() && (
+                <div className="flex gap-2 mb-4">
+                  <Button
+                    variant="primary"
+                    onClick={() => setShowUploader(true)}
+                    icon={<Upload className="w-4 h-4" />}
+                    className="flex-1"
+                  >
+                    Upload Ticket
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowManualEntry(true)}
+                    icon={<Plus className="w-4 h-4" />}
+                    className="flex-1"
+                  >
+                    Manual Entry
+                  </Button>
+                </div>
+              )}
 
               {/* Tickets list */}
               {displayTickets.length === 0 ? (
@@ -193,6 +206,9 @@ export const TrainsPage: React.FC = () => {
                       <TicketCard
                         ticket={ticket}
                         onClick={() => navigate(`/trains/${ticket.id}`)}
+                        onEdit={(t) => setEditingTicket(t)}
+                        onDelete={(id) => setDeleteConfirm({ type: 'ticket', id })}
+                        canEdit={canEdit()}
                       />
                     </motion.div>
                   ))}
@@ -208,14 +224,16 @@ export const TrainsPage: React.FC = () => {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
             >
-              <Button
-                variant="primary"
-                onClick={() => setShowAddTrip(true)}
-                icon={<Plus className="w-4 h-4" />}
-                className="w-full mb-4"
-              >
-                Create Trip
-              </Button>
+              {canEdit() && (
+                <Button
+                  variant="primary"
+                  onClick={() => setShowAddTrip(true)}
+                  icon={<Plus className="w-4 h-4" />}
+                  className="w-full mb-4"
+                >
+                  Create Trip
+                </Button>
+              )}
 
               {trips.length === 0 ? (
                 <EmptyState
@@ -235,6 +253,9 @@ export const TrainsPage: React.FC = () => {
                       <TripCard
                         trip={trip}
                         onClick={() => navigate(`/trips/${trip.id}`)}
+                        onEdit={(t) => setEditingTrip(t)}
+                        onDelete={(id) => setDeleteConfirm({ type: 'trip', id })}
+                        canEdit={canEdit()}
                       />
                     </motion.div>
                   ))}
@@ -250,9 +271,9 @@ export const TrainsPage: React.FC = () => {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
             >
-              <Card className="mb-4">
+              <Card className="mb-4 bg-white/80 backdrop-blur border border-gold-200">
                 <div className="p-4">
-                  <h3 className="font-semibold text-gray-900 mb-4">Check PNR Status</h3>
+                  <h3 className="font-semibold text-maroon-600 mb-4">Check PNR Status</h3>
                   <PNRChecker />
                 </div>
               </Card>
@@ -260,18 +281,18 @@ export const TrainsPage: React.FC = () => {
               {/* Quick PNR from existing tickets */}
               {upcomingTickets.length > 0 && (
                 <div className="mt-6">
-                  <h3 className="font-semibold text-gray-900 mb-3">Your Upcoming Tickets</h3>
+                  <h3 className="font-semibold text-maroon-600 mb-3">Your Upcoming Tickets</h3>
                   <div className="space-y-2">
                     {upcomingTickets.map(ticket => (
-                      <Card key={ticket.id} hoverable>
+                      <Card key={ticket.id} hoverable className="bg-white/80 backdrop-blur border border-gold-200">
                         <div className="p-3 flex items-center justify-between">
                           <div>
-                            <p className="font-mono font-medium">{ticket.pnr}</p>
-                            <p className="text-sm text-gray-500">
+                            <p className="font-mono font-medium text-primary-600">{ticket.pnr}</p>
+                            <p className="text-sm text-gray-600">
                               {ticket.trainNumber} • {format(ticket.journeyDate, 'dd MMM')}
                             </p>
                           </div>
-                          <ChevronRight className="w-5 h-5 text-gray-400" />
+                          <ChevronRight className="w-5 h-5 text-primary-400" />
                         </div>
                       </Card>
                     ))}
@@ -320,33 +341,108 @@ export const TrainsPage: React.FC = () => {
           onCancel={() => setShowAddTrip(false)}
         />
       </Modal>
+
+      {/* Edit Ticket Modal */}
+      <Modal
+        isOpen={!!editingTicket}
+        onClose={() => setEditingTicket(null)}
+        title="Edit Ticket"
+        size="lg"
+      >
+        {editingTicket && (
+          <ManualTicketForm
+            ticket={editingTicket}
+            onSubmit={async (data) => {
+              await updateTicket(editingTicket.id, data);
+              setEditingTicket(null);
+              toast.success('Ticket updated successfully');
+            }}
+            onCancel={() => setEditingTicket(null)}
+          />
+        )}
+      </Modal>
+
+      {/* Edit Trip Modal */}
+      <Modal
+        isOpen={!!editingTrip}
+        onClose={() => setEditingTrip(null)}
+        title="Edit Trip"
+      >
+        {editingTrip && (
+          <TripForm
+            trip={editingTrip}
+            onSubmit={async (data) => {
+              await updateTrip(editingTrip.id, data);
+              setEditingTrip(null);
+              toast.success('Trip updated successfully');
+            }}
+            onCancel={() => setEditingTrip(null)}
+          />
+        )}
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={!!deleteConfirm}
+        onClose={() => setDeleteConfirm(null)}
+        title="Confirm Delete"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-600">
+            Are you sure you want to delete this {deleteConfirm?.type}? 
+            This action cannot be undone.
+          </p>
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={() => setDeleteConfirm(null)} className="flex-1">
+              Cancel
+            </Button>
+            <Button 
+              variant="danger" 
+              onClick={async () => {
+                if (deleteConfirm?.type === 'ticket') {
+                  await deleteTicket(deleteConfirm.id);
+                  toast.success('Ticket deleted successfully');
+                } else if (deleteConfirm?.type === 'trip') {
+                  await deleteTrip(deleteConfirm.id);
+                  toast.success('Trip deleted successfully');
+                }
+                setDeleteConfirm(null);
+              }}
+              className="flex-1"
+            >
+              Delete
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
 
 interface ManualTicketFormProps {
+  ticket?: TrainTicket;
   onSubmit: (ticket: Omit<TrainTicket, 'id' | 'createdAt' | 'updatedAt'>) => void;
   onCancel: () => void;
 }
 
-const ManualTicketForm: React.FC<ManualTicketFormProps> = ({ onSubmit, onCancel }) => {
+const ManualTicketForm: React.FC<ManualTicketFormProps> = ({ ticket, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState({
-    pnr: '',
-    trainNumber: '',
-    trainName: '',
-    journeyDate: '',
-    boardingStation: '',
-    boardingStationCode: '',
-    destinationStation: '',
-    destinationStationCode: '',
-    departureTime: '',
-    arrivalTime: '',
-    travelClass: 'SL',
-    quota: 'GENERAL',
-    totalFare: 0,
+    pnr: ticket?.pnr || '',
+    trainNumber: ticket?.trainNumber || '',
+    trainName: ticket?.trainName || '',
+    journeyDate: ticket?.journeyDate ? format(ticket.journeyDate, 'yyyy-MM-dd') : '',
+    boardingStation: ticket?.boardingStation || '',
+    boardingStationCode: ticket?.boardingStationCode || '',
+    destinationStation: ticket?.destinationStation || '',
+    destinationStationCode: ticket?.destinationStationCode || '',
+    departureTime: ticket?.departureTime || '',
+    arrivalTime: ticket?.arrivalTime || '',
+    travelClass: ticket?.travelClass || 'SL',
+    quota: ticket?.quota || 'GENERAL',
+    totalFare: ticket?.totalFare || 0,
   });
 
-  const [passengers, setPassengers] = useState<Passenger[]>([{
+  const [passengers, setPassengers] = useState<Passenger[]>(ticket?.passengers || [{
     name: '',
     age: 30,
     gender: 'M',

@@ -1,8 +1,35 @@
-// Allowed users for testing mode - Add your email addresses here
-export const ALLOWED_USERS = [
-  'sankarshpallela@gmail.com',
-  // Add more allowed email addresses here
-];
+import { UserRole } from '../types';
+
+// User roles configuration
+// superadmin: Full control + manage users and roles
+// admin: Full CRUD access to all data
+// read_only: Can only view data, no add/edit/delete
+export const USER_ROLES: Record<string, UserRole> = {
+  'sankarshpallela@gmail.com': 'superadmin',
+  'ravaleepusa5@gmail.com': 'admin',
+  'sammybilly57@gmail.com': 'admin',
+  'sreeharshpallela888@gmail.com': 'read_only',
+  'sreeharshpallela@gmail.com': 'read_only',
+  'pallelaneeraja77@gmail.com': 'read_only',
+  // Add more users and their roles here
+};
+
+// Allowed users for testing mode - derived from USER_ROLES
+export const ALLOWED_USERS = Object.keys(USER_ROLES);
+
+// Role display names
+export const ROLE_LABELS: Record<UserRole, string> = {
+  superadmin: 'Super Admin',
+  admin: 'Admin',
+  read_only: 'Read Only',
+};
+
+// Role colors for display
+export const ROLE_COLORS: Record<UserRole, string> = {
+  superadmin: '#dc2626', // Red
+  admin: '#2563eb', // Blue
+  read_only: '#6b7280', // Gray
+};
 
 // App configuration
 export const APP_CONFIG = {

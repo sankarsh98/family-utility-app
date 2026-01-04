@@ -5,14 +5,15 @@ import {
   Pill, 
   Users, 
   AlertTriangle,
-  TrendingUp,
-  Search
+  TrendingUp
 } from 'lucide-react';
-import { Button, SearchInput, EmptyState, Card, Modal, Input, Select } from '../components/ui';
+import { Button, SearchInput, EmptyState, Card, Modal, Input } from '../components/ui';
 import { MedicineCard, MedicineForm, FamilyMemberCard } from '../components/medicines/MedicineComponents';
 import { useMedicineStore } from '../store/medicineStore';
+import { useAuthStore } from '../store/authStore';
 import { Medicine, FamilyMember } from '../types';
 import { MEMBER_COLORS } from '../config/constants';
+import toast from 'react-hot-toast';
 
 type TabType = 'medicines' | 'family' | 'stats';
 
@@ -20,7 +21,6 @@ export const MedicinesPage: React.FC = () => {
   const {
     medicines,
     familyMembers,
-    loading,
     filters,
     fetchMedicines,
     fetchFamilyMembers,
@@ -28,6 +28,7 @@ export const MedicinesPage: React.FC = () => {
     updateMedicine,
     deleteMedicine,
     addFamilyMember,
+    updateFamilyMember,
     deleteFamilyMember,
     logMedicineTaken,
     setFilters,
@@ -43,6 +44,11 @@ export const MedicinesPage: React.FC = () => {
   const [showAddMedicine, setShowAddMedicine] = useState(false);
   const [showAddMember, setShowAddMember] = useState(false);
   const [selectedMember, setSelectedMember] = useState<string | null>(null);
+  const [editingMedicine, setEditingMedicine] = useState<Medicine | null>(null);
+  const [editingFamilyMember, setEditingFamilyMember] = useState<FamilyMember | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'medicine' | 'member', id: string } | null>(null);
+
+  const { canEdit } = useAuthStore();
 
   useEffect(() => {
     fetchMedicines();
@@ -65,21 +71,23 @@ export const MedicinesPage: React.FC = () => {
   ];
 
   return (
-    <div className="pb-20">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-green-600 to-teal-600 text-white px-4 py-6">
-        <h1 className="text-2xl font-bold mb-4">Medicine Organizer</h1>
-        
-        {/* Tabs */}
-        <div className="flex gap-2">
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as TabType)}
+    <div className="min-h-screen pb-20 bg-gradient-to-br from-cream-500 via-primary-50 to-secondary-50 bg-indian-pattern">
+      {/* Header with Indian styling */}
+      <div className="bg-gradient-to-r from-secondary-500 via-secondary-600 to-teal-600 text-white px-4 py-6 relative overflow-hidden shadow-lg">
+        <div className="absolute inset-0 bg-indian-pattern opacity-10"></div>
+        <div className="relative">
+          <h1 className="text-2xl font-bold mb-4">Medicine Organizer</h1>
+          
+          {/* Tabs */}
+          <div className="flex gap-2">
+            {tabs.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as TabType)}
               className={`
                 flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all
                 ${activeTab === tab.id 
-                  ? 'bg-white text-green-600' 
+                  ? 'bg-white text-secondary-600 shadow-lg' 
                   : 'bg-white/20 hover:bg-white/30'
                 }
               `}
@@ -88,6 +96,7 @@ export const MedicinesPage: React.FC = () => {
               {tab.label}
             </button>
           ))}
+          </div>
         </div>
       </div>
 
@@ -147,17 +156,17 @@ export const MedicinesPage: React.FC = () => {
               {(lowStockMedicines.length > 0 || expiredMedicines.length > 0) && (
                 <div className="space-y-2 mb-4">
                   {lowStockMedicines.length > 0 && (
-                    <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
-                      <AlertTriangle className="w-5 h-5 text-yellow-600" />
-                      <span className="text-sm text-yellow-800">
+                    <div className="flex items-center gap-2 p-3 bg-gradient-to-r from-gold-50 to-yellow-50/80 backdrop-blur border border-gold-300 rounded-xl shadow-sm">
+                      <AlertTriangle className="w-5 h-5 text-gold-600" />
+                      <span className="text-sm text-gold-800 font-medium">
                         {lowStockMedicines.length} medicine{lowStockMedicines.length > 1 ? 's' : ''} running low
                       </span>
                     </div>
                   )}
                   {expiredMedicines.length > 0 && (
-                    <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
-                      <AlertTriangle className="w-5 h-5 text-red-600" />
-                      <span className="text-sm text-red-800">
+                    <div className="flex items-center gap-2 p-3 bg-gradient-to-r from-red-50 to-maroon-50/80 backdrop-blur border border-maroon-300 rounded-xl shadow-sm">
+                      <AlertTriangle className="w-5 h-5 text-maroon-600" />
+                      <span className="text-sm text-maroon-700 font-medium">
                         {expiredMedicines.length} medicine{expiredMedicines.length > 1 ? 's' : ''} expired
                       </span>
                     </div>
@@ -166,14 +175,16 @@ export const MedicinesPage: React.FC = () => {
               )}
 
               {/* Add button */}
-              <Button
-                variant="primary"
-                onClick={() => setShowAddMedicine(true)}
-                icon={<Plus className="w-4 h-4" />}
-                className="w-full mb-4"
-              >
-                Add Medicine
-              </Button>
+              {canEdit() && (
+                <Button
+                  variant="primary"
+                  onClick={() => setShowAddMedicine(true)}
+                  icon={<Plus className="w-4 h-4" />}
+                  className="w-full mb-4"
+                >
+                  Add Medicine
+                </Button>
+              )}
 
               {/* Medicines list */}
               {displayMedicines.length === 0 ? (
@@ -196,6 +207,9 @@ export const MedicinesPage: React.FC = () => {
                         familyMembers={familyMembers}
                         daysRemaining={getDaysRemaining(medicine)}
                         onTakeMedicine={logMedicineTaken}
+                        onEdit={(med) => setEditingMedicine(med)}
+                        onDelete={(id) => setDeleteConfirm({ type: 'medicine', id })}
+                        canEdit={canEdit()}
                       />
                     </motion.div>
                   ))}
@@ -211,14 +225,16 @@ export const MedicinesPage: React.FC = () => {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
             >
-              <Button
-                variant="primary"
-                onClick={() => setShowAddMember(true)}
-                icon={<Plus className="w-4 h-4" />}
-                className="w-full mb-4"
-              >
-                Add Family Member
-              </Button>
+              {canEdit() && (
+                <Button
+                  variant="primary"
+                  onClick={() => setShowAddMember(true)}
+                  icon={<Plus className="w-4 h-4" />}
+                  className="w-full mb-4"
+                >
+                  Add Family Member
+                </Button>
+              )}
 
               {familyMembers.length === 0 ? (
                 <EmptyState
@@ -239,7 +255,8 @@ export const MedicinesPage: React.FC = () => {
                         member={member}
                         medicineCount={getMedicinesByMember(member.id).length}
                         monthlyCost={getEstimatedMonthlyCost(member.id)}
-                        onDelete={() => deleteFamilyMember(member.id)}
+                        onEdit={canEdit() ? () => setEditingFamilyMember(member) : undefined}
+                        onDelete={canEdit() ? () => setDeleteConfirm({ type: 'member', id: member.id }) : undefined}
                       />
                     </motion.div>
                   ))}
@@ -362,6 +379,82 @@ export const MedicinesPage: React.FC = () => {
           }}
           onCancel={() => setShowAddMember(false)}
         />
+      </Modal>
+
+      {/* Edit Medicine Modal */}
+      <Modal
+        isOpen={!!editingMedicine}
+        onClose={() => setEditingMedicine(null)}
+        title="Edit Medicine"
+        size="lg"
+      >
+        {editingMedicine && (
+          <MedicineForm
+            medicine={editingMedicine}
+            familyMembers={familyMembers}
+            onSubmit={async (data) => {
+              await updateMedicine(editingMedicine.id, data);
+              setEditingMedicine(null);
+              toast.success('Medicine updated successfully');
+            }}
+            onCancel={() => setEditingMedicine(null)}
+          />
+        )}
+      </Modal>
+
+      {/* Edit Family Member Modal */}
+      <Modal
+        isOpen={!!editingFamilyMember}
+        onClose={() => setEditingFamilyMember(null)}
+        title="Edit Family Member"
+      >
+        {editingFamilyMember && (
+          <FamilyMemberForm
+            member={editingFamilyMember}
+            usedColors={familyMembers.filter(m => m.id !== editingFamilyMember.id).map(m => m.color)}
+            onSubmit={async (data) => {
+              await updateFamilyMember(editingFamilyMember.id, data);
+              setEditingFamilyMember(null);
+              toast.success('Family member updated successfully');
+            }}
+            onCancel={() => setEditingFamilyMember(null)}
+          />
+        )}
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={!!deleteConfirm}
+        onClose={() => setDeleteConfirm(null)}
+        title="Confirm Delete"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-600">
+            Are you sure you want to delete this {deleteConfirm?.type === 'medicine' ? 'medicine' : 'family member'}? 
+            This action cannot be undone.
+          </p>
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={() => setDeleteConfirm(null)} className="flex-1">
+              Cancel
+            </Button>
+            <Button 
+              variant="danger" 
+              onClick={async () => {
+                if (deleteConfirm?.type === 'medicine') {
+                  await deleteMedicine(deleteConfirm.id);
+                  toast.success('Medicine deleted successfully');
+                } else if (deleteConfirm?.type === 'member') {
+                  await deleteFamilyMember(deleteConfirm.id);
+                  toast.success('Family member deleted successfully');
+                }
+                setDeleteConfirm(null);
+              }}
+              className="flex-1"
+            >
+              Delete
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

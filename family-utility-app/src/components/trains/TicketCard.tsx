@@ -3,12 +3,13 @@ import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { 
   Train, 
-  MapPin, 
   Calendar, 
   Clock, 
   Users,
   ChevronRight,
-  Armchair
+  Armchair,
+  Edit,
+  Trash2
 } from 'lucide-react';
 import { TrainTicket } from '../../types';
 import { Card, TicketStatusBadge } from '../ui';
@@ -17,64 +18,85 @@ import { TRAIN_CLASSES } from '../../config/constants';
 interface TicketCardProps {
   ticket: TrainTicket;
   onClick?: () => void;
+  onEdit?: (ticket: TrainTicket) => void;
+  onDelete?: (ticketId: string) => void;
+  canEdit?: boolean;
 }
 
-export const TicketCard: React.FC<TicketCardProps> = ({ ticket, onClick }) => {
+export const TicketCard: React.FC<TicketCardProps> = ({ ticket, onClick, onEdit, onDelete, canEdit = true }) => {
   const isPast = ticket.journeyDate < new Date();
 
   return (
     <Card 
       onClick={onClick} 
       hoverable 
-      className={`${isPast ? 'opacity-75' : ''}`}
+      className={`${isPast ? 'opacity-75' : ''} bg-white/90 backdrop-blur border border-gold-200 shadow-sm hover:shadow-md transition-shadow`}
     >
       <div className="p-4">
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-2">
-            <div className="p-2 bg-primary-100 rounded-xl">
+            <div className="p-2 bg-gradient-to-br from-primary-100 to-gold-100 rounded-xl border border-gold-200">
               <Train className="w-5 h-5 text-primary-600" />
             </div>
             <div>
-              <p className="font-semibold text-gray-900">{ticket.trainNumber}</p>
-              <p className="text-sm text-gray-500">{ticket.trainName}</p>
+              <p className="font-semibold text-maroon-600">{ticket.trainNumber}</p>
+              <p className="text-sm text-gray-600">{ticket.trainName}</p>
             </div>
           </div>
-          <TicketStatusBadge status={ticket.status} />
+          <div className="flex items-center gap-2">
+            <TicketStatusBadge status={ticket.status} />
+            {canEdit && onEdit && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); onEdit(ticket); }}
+                className="p-1.5 hover:bg-gold-50 rounded-lg transition-colors"
+              >
+                <Edit className="w-4 h-4 text-gray-500" />
+              </button>
+            )}
+            {canEdit && onDelete && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); onDelete(ticket.id); }}
+                className="p-1.5 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                <Trash2 className="w-4 h-4 text-red-500" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Route */}
         <div className="flex items-center gap-3 mb-3">
           <div className="flex-1">
             <p className="text-xs text-gray-500 uppercase">From</p>
-            <p className="font-semibold text-gray-900">{ticket.boardingStationCode}</p>
+            <p className="font-semibold text-maroon-600">{ticket.boardingStationCode}</p>
             <p className="text-sm text-gray-600 truncate">{ticket.boardingStation}</p>
             <p className="text-sm text-primary-600 font-medium">{ticket.departureTime}</p>
           </div>
           
           <div className="flex flex-col items-center px-2">
-            <div className="w-8 h-px bg-gray-300" />
-            <ChevronRight className="w-4 h-4 text-gray-400 -my-1" />
-            <div className="w-8 h-px bg-gray-300" />
+            <div className="w-8 h-px bg-gold-300" />
+            <ChevronRight className="w-4 h-4 text-gold-400 -my-1" />
+            <div className="w-8 h-px bg-gold-300" />
           </div>
           
           <div className="flex-1 text-right">
             <p className="text-xs text-gray-500 uppercase">To</p>
-            <p className="font-semibold text-gray-900">{ticket.destinationStationCode}</p>
+            <p className="font-semibold text-maroon-600">{ticket.destinationStationCode}</p>
             <p className="text-sm text-gray-600 truncate">{ticket.destinationStation}</p>
             <p className="text-sm text-primary-600 font-medium">{ticket.arrivalTime}</p>
           </div>
         </div>
 
         {/* Details */}
-        <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-gray-100">
+        <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-gold-100">
           <div className="flex items-center gap-1.5 text-sm text-gray-600">
-            <Calendar className="w-4 h-4" />
+            <Calendar className="w-4 h-4 text-primary-500" />
             <span>{format(ticket.journeyDate, 'dd MMM yyyy')}</span>
           </div>
           
           <div className="flex items-center gap-1.5 text-sm text-gray-600">
-            <Armchair className="w-4 h-4" />
+            <Armchair className="w-4 h-4 text-primary-500" />
             <span>{TRAIN_CLASSES[ticket.travelClass as keyof typeof TRAIN_CLASSES] || ticket.travelClass}</span>
           </div>
           
@@ -112,14 +134,10 @@ export const TicketCard: React.FC<TicketCardProps> = ({ ticket, onClick }) => {
 
 interface TicketDetailCardProps {
   ticket: TrainTicket;
-  onCheckPNR?: () => void;
-  onDelete?: () => void;
 }
 
 export const TicketDetailCard: React.FC<TicketDetailCardProps> = ({ 
-  ticket, 
-  onCheckPNR,
-  onDelete 
+  ticket
 }) => {
   return (
     <div className="space-y-4">

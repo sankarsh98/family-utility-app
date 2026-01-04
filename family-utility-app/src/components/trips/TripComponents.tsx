@@ -1,67 +1,83 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { 
   MapPin, 
   Calendar, 
-  FileText, 
-  Image, 
-  DollarSign,
-  ChevronRight,
   Plus,
-  Upload,
   Trash2,
   Check,
   Navigation,
   Clock,
-  Star
+  Edit
 } from 'lucide-react';
-import { Trip, PlaceToVisit, Expense, TripDocument, TripPhoto } from '../../types';
+import { Trip, PlaceToVisit, Expense } from '../../types';
 import { Card, Button, Input, Select, TextArea, Modal, Badge } from '../ui';
 
 interface TripCardProps {
   trip: Trip;
   onClick?: () => void;
+  onEdit?: (trip: Trip) => void;
+  onDelete?: (tripId: string) => void;
+  canEdit?: boolean;
 }
 
-export const TripCard: React.FC<TripCardProps> = ({ trip, onClick }) => {
+export const TripCard: React.FC<TripCardProps> = ({ trip, onClick, onEdit, onDelete, canEdit = true }) => {
   const isUpcoming = new Date(trip.startDate) > new Date();
   const totalExpenses = trip.expenses.reduce((sum, e) => sum + e.amount, 0);
 
   return (
-    <Card onClick={onClick} hoverable>
+    <Card onClick={onClick} hoverable className="bg-white/90 backdrop-blur border border-gold-200 shadow-sm hover:shadow-md transition-shadow">
       <div className="p-4">
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
           <div>
-            <h3 className="font-semibold text-gray-900 text-lg">{trip.name}</h3>
-            <div className="flex items-center gap-1 text-gray-500 text-sm mt-1">
-              <MapPin className="w-4 h-4" />
+            <h3 className="font-semibold text-maroon-600 text-lg">{trip.name}</h3>
+            <div className="flex items-center gap-1 text-gray-600 text-sm mt-1">
+              <MapPin className="w-4 h-4 text-primary-500" />
               <span>{trip.destination}</span>
             </div>
           </div>
-          <Badge variant={isUpcoming ? 'info' : 'default'}>
-            {isUpcoming ? 'Upcoming' : 'Past'}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant={isUpcoming ? 'info' : 'default'}>
+              {isUpcoming ? 'Upcoming' : 'Past'}
+            </Badge>
+            {canEdit && onEdit && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); onEdit(trip); }}
+                className="p-1.5 hover:bg-gold-50 rounded-lg transition-colors"
+              >
+                <Edit className="w-4 h-4 text-gray-500" />
+              </button>
+            )}
+            {canEdit && onDelete && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); onDelete(trip.id); }}
+                className="p-1.5 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                <Trash2 className="w-4 h-4 text-red-500" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Dates */}
         <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
-          <Calendar className="w-4 h-4" />
+          <Calendar className="w-4 h-4 text-primary-500" />
           <span>
             {format(trip.startDate, 'dd MMM')} - {format(trip.endDate, 'dd MMM yyyy')}
           </span>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-2 pt-3 border-t border-gray-100">
+        <div className="grid grid-cols-3 gap-2 pt-3 border-t border-gold-100">
           <div className="text-center">
             <p className="text-lg font-semibold text-primary-600">{trip.tickets.length}</p>
-            <p className="text-xs text-gray-500">Tickets</p>
+            <p className="text-xs text-gray-600">Tickets</p>
           </div>
           <div className="text-center">
             <p className="text-lg font-semibold text-secondary-600">{trip.placesToVisit.length}</p>
-            <p className="text-xs text-gray-500">Places</p>
+            <p className="text-xs text-gray-600">Places</p>
           </div>
           <div className="text-center">
             <p className="text-lg font-semibold text-amber-600">₹{totalExpenses}</p>

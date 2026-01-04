@@ -6,14 +6,22 @@ import {
   User as FirebaseUser
 } from 'firebase/auth';
 import { auth, googleProvider } from '../config/firebase';
-import { ALLOWED_USERS } from '../config/constants';
-import { User } from '../types';
+import { ALLOWED_USERS, USER_ROLES } from '../config/constants';
+import { User, UserRole } from '../types';
 
 interface AuthState {
   user: User | null;
   loading: boolean;
   error: string | null;
   isAllowed: boolean;
+  
+  // Role-based permission helpers
+  canEdit: () => boolean;
+  canDelete: () => boolean;
+  canManageUsers: () => boolean;
+  isSuperAdmin: () => boolean;
+  isAdmin: () => boolean;
+  isReadOnly: () => boolean;
   
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -23,11 +31,35 @@ interface AuthState {
   initialize: () => () => void;
 }
 
+const getUserRole = (email: string | null): UserRole => {
+  if (!email) return 'read_only';
+  return USER_ROLES[email] || 'read_only';
+};
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   loading: true,
   error: null,
   isAllowed: false,
+  
+  // Permission helpers
+  canEdit: () => {
+    const role = get().user?.role;
+    return role === 'superadmin' || role === 'admin';
+  },
+  
+  canDelete: () => {
+    const role = get().user?.role;
+    return role === 'superadmin' || role === 'admin';
+  },
+  
+  canManageUsers: () => {
+    return get().user?.role === 'superadmin';
+  },
+  
+  isSuperAdmin: () => get().user?.role === 'superadmin',
+  isAdmin: () => get().user?.role === 'admin',
+  isReadOnly: () => get().user?.role === 'read_only',
   
   signInWithGoogle: async () => {
     try {
@@ -54,6 +86,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         email: firebaseUser.email,
         displayName: firebaseUser.displayName,
         photoURL: firebaseUser.photoURL,
+        role: getUserRole(firebaseUser.email),
       };
       
       set({ user, isAllowed: true, loading: false });
@@ -89,6 +122,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             email: firebaseUser.email,
             displayName: firebaseUser.displayName,
             photoURL: firebaseUser.photoURL,
+            role: getUserRole(firebaseUser.email),
           };
           set({ user, isAllowed: true, loading: false });
         } else {

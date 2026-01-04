@@ -1,41 +1,41 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { format, differenceInDays } from 'date-fns';
+import { format } from 'date-fns';
 import { 
   Pill, 
-  Clock, 
-  AlertTriangle, 
-  Package,
-  Plus,
   Minus,
   Camera,
   ExternalLink,
-  User,
-  Calendar,
-  IndianRupee,
   Trash2,
   Edit,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  X
 } from 'lucide-react';
 import { Medicine, FamilyMember } from '../../types';
-import { Card, Button, Badge, ProgressBar, Modal, Input, Select, TextArea } from '../ui';
+import { Card, Button, Badge, ProgressBar, Input, Select, TextArea } from '../ui';
 import { MEDICINE_TIMINGS } from '../../config/constants';
 
 interface MedicineCardProps {
   medicine: Medicine;
   familyMembers: FamilyMember[];
   onTakeMedicine?: (medicineId: string, memberId: string, quantity: number) => void;
+  onEdit?: (medicine: Medicine) => void;
+  onDelete?: (medicineId: string) => void;
   onClick?: () => void;
   daysRemaining: number;
+  canEdit?: boolean;
 }
 
 export const MedicineCard: React.FC<MedicineCardProps> = ({ 
   medicine, 
   familyMembers,
   onTakeMedicine,
+  onEdit,
+  onDelete,
   onClick,
-  daysRemaining 
+  daysRemaining,
+  canEdit = true
 }) => {
   const [expanded, setExpanded] = useState(false);
   const isLowStock = daysRemaining <= 7;
@@ -47,7 +47,13 @@ export const MedicineCard: React.FC<MedicineCardProps> = ({
   };
 
   return (
-    <Card className={`${isExpired ? 'border-2 border-red-300' : isLowStock ? 'border-2 border-yellow-300' : ''}`}>
+    <Card className={`bg-white/90 backdrop-blur border shadow-sm hover:shadow-md transition-shadow ${
+      isExpired 
+        ? 'border-2 border-maroon-300' 
+        : isLowStock 
+          ? 'border-2 border-gold-400' 
+          : 'border-gold-200'
+    }`}>
       <div className="p-4">
         {/* Header */}
         <div className="flex items-start gap-3" onClick={onClick}>
@@ -55,25 +61,41 @@ export const MedicineCard: React.FC<MedicineCardProps> = ({
             <img 
               src={medicine.images[0]} 
               alt={medicine.name}
-              className="w-16 h-16 rounded-xl object-cover"
+              className="w-16 h-16 rounded-xl object-cover border border-gold-200"
             />
           ) : (
-            <div className="w-16 h-16 bg-gradient-to-br from-green-100 to-teal-100 rounded-xl flex items-center justify-center">
-              <Pill className="w-8 h-8 text-green-600" />
+            <div className="w-16 h-16 bg-gradient-to-br from-secondary-100 to-teal-100 rounded-xl flex items-center justify-center border border-secondary-200">
+              <Pill className="w-8 h-8 text-secondary-600" />
             </div>
           )}
           
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="font-semibold text-gray-900">{medicine.name}</h3>
+                <h3 className="font-semibold text-maroon-600">{medicine.name}</h3>
                 {medicine.strength && (
-                  <p className="text-sm text-gray-500">{medicine.strength}</p>
+                  <p className="text-sm text-gray-600">{medicine.strength}</p>
                 )}
               </div>
-              <div className="flex gap-1">
+              <div className="flex gap-1 items-center">
                 {isExpired && <Badge variant="danger">Expired</Badge>}
                 {isLowStock && !isExpired && <Badge variant="warning">Low Stock</Badge>}
+                {canEdit && onEdit && (
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); onEdit(medicine); }} 
+                    className="p-1.5 hover:bg-gold-50 rounded-lg ml-1 transition-colors"
+                  >
+                    <Edit className="w-4 h-4 text-gray-500" />
+                  </button>
+                )}
+                {canEdit && onDelete && (
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); onDelete(medicine.id); }} 
+                    className="p-1.5 hover:bg-red-50 rounded-lg transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4 text-red-500" />
+                  </button>
+                )}
               </div>
             </div>
 
@@ -261,6 +283,87 @@ export const MedicineForm: React.FC<MedicineFormProps> = ({
 
   const [selectedTimings, setSelectedTimings] = useState<string[]>(medicine?.timing || []);
   const [selectedMembers, setSelectedMembers] = useState<string[]>(medicine?.assignedTo || []);
+  const [images, setImages] = useState<string[]>(medicine?.images || []);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    if (images.length >= 2) {
+      alert('Maximum 2 images allowed');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      for (let i = 0; i < Math.min(files.length, 2 - images.length); i++) {
+        const file = files[i];
+        
+        // Validate file size (max 2MB for base64)
+        if (file.size > 2 * 1024 * 1024) {
+          alert('Image size should be less than 2MB');
+          continue;
+        }
+        
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+          alert('Please select an image file');
+          continue;
+        }
+        
+        // Convert to base64 data URL (avoids Firebase Storage CORS issues)
+        const base64Url = await convertToBase64(file, 600, 0.6);
+        setImages(prev => [...prev, base64Url]);
+      }
+    } catch (error: any) {
+      console.error('Error processing image:', error);
+      alert('Failed to process image. Please try a smaller image.');
+    } finally {
+      setUploading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+  
+  // Helper function to convert image to base64 with compression
+  const convertToBase64 = (file: File, maxWidth: number, quality: number): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let { width, height } = img;
+          
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+          
+          // Convert to base64 data URL
+          const dataUrl = canvas.toDataURL('image/jpeg', quality);
+          resolve(dataUrl);
+        };
+        img.onerror = () => reject(new Error('Failed to load image'));
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeImage = (indexToRemove: number) => {
+    setImages(prev => prev.filter((_, i) => i !== indexToRemove));
+  };
 
   const handleSubmit = () => {
     if (!formData.name) return;
@@ -271,7 +374,7 @@ export const MedicineForm: React.FC<MedicineFormProps> = ({
       manufacturer: formData.manufacturer,
       strength: formData.strength,
       form: formData.form as Medicine['form'],
-      images: formData.images || [],
+      images: images,
       assignedTo: selectedMembers,
       dosagePerDay: formData.dosagePerDay || 1,
       quantityPerDose: formData.quantityPerDose || 1,
@@ -358,27 +461,79 @@ export const MedicineForm: React.FC<MedicineFormProps> = ({
         </div>
       </div>
 
+      {/* Medicine Images */}
+      <div className="space-y-3">
+        <h4 className="font-medium text-gray-900">Medicine Images (Max 2)</h4>
+        <div className="flex flex-wrap gap-3">
+          {images.map((img, index) => (
+            <div key={index} className="relative w-20 h-20">
+              <img 
+                src={img} 
+                alt={`Medicine ${index + 1}`} 
+                className="w-full h-full object-cover rounded-xl border border-gray-200"
+              />
+              <button
+                onClick={() => removeImage(index)}
+                className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ))}
+          {images.length < 2 && (
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-primary-400 hover:text-primary-500 transition-colors"
+            >
+              {uploading ? (
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-500" />
+              ) : (
+                <>
+                  <Camera className="w-6 h-6" />
+                  <span className="text-xs mt-1">Add</span>
+                </>
+              )}
+            </button>
+          )}
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleImageUpload}
+          className="hidden"
+          multiple
+        />
+      </div>
+
       {/* Assigned To */}
       <div className="space-y-3">
         <h4 className="font-medium text-gray-900">Assigned To</h4>
-        <div className="flex flex-wrap gap-2">
-          {familyMembers.map(member => (
-            <button
-              key={member.id}
-              onClick={() => toggleMember(member.id)}
-              className={`
-                px-3 py-1.5 rounded-full text-sm font-medium transition-all
-                ${selectedMembers.includes(member.id)
-                  ? 'text-white shadow-lg'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }
-              `}
-              style={selectedMembers.includes(member.id) ? { backgroundColor: member.color } : {}}
-            >
-              {member.name}
-            </button>
-          ))}
-        </div>
+        {familyMembers.length === 0 ? (
+          <p className="text-sm text-gray-500 italic">
+            No family members added yet. Go to the Family tab to add family members first.
+          </p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {familyMembers.map(member => (
+              <button
+                key={member.id}
+                onClick={() => toggleMember(member.id)}
+                className={`
+                  px-3 py-1.5 rounded-full text-sm font-medium transition-all
+                  ${selectedMembers.includes(member.id)
+                    ? 'text-white shadow-lg'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }
+                `}
+                style={selectedMembers.includes(member.id) ? { backgroundColor: member.color } : {}}
+              >
+                {member.name}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Dosage */}
@@ -531,41 +686,41 @@ export const FamilyMemberCard: React.FC<FamilyMemberCardProps> = ({
   onDelete,
 }) => {
   return (
-    <Card hoverable>
+    <Card hoverable className="bg-white/90 backdrop-blur border border-gold-200 shadow-sm hover:shadow-md transition-shadow">
       <div className="p-4">
         <div className="flex items-center gap-3">
           <div 
-            className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg"
+            className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md"
             style={{ backgroundColor: member.color }}
           >
             {member.name.charAt(0).toUpperCase()}
           </div>
           <div className="flex-1">
-            <h3 className="font-semibold text-gray-900">{member.name}</h3>
-            <p className="text-sm text-gray-500">{member.relation}</p>
+            <h3 className="font-semibold text-maroon-600">{member.name}</h3>
+            <p className="text-sm text-gray-600">{member.relation}</p>
           </div>
           <div className="flex gap-1">
             {onEdit && (
-              <button onClick={onEdit} className="p-2 hover:bg-gray-100 rounded-lg">
+              <button onClick={onEdit} className="p-2 hover:bg-gold-50 rounded-lg transition-colors">
                 <Edit className="w-4 h-4 text-gray-500" />
               </button>
             )}
             {onDelete && (
-              <button onClick={onDelete} className="p-2 hover:bg-red-50 rounded-lg">
+              <button onClick={onDelete} className="p-2 hover:bg-red-50 rounded-lg transition-colors">
                 <Trash2 className="w-4 h-4 text-red-500" />
               </button>
             )}
           </div>
         </div>
         
-        <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-100">
+        <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-gold-100">
           <div className="text-center">
-            <p className="text-2xl font-bold text-primary-600">{medicineCount}</p>
-            <p className="text-xs text-gray-500">Medicines</p>
+            <p className="text-2xl font-bold text-secondary-600">{medicineCount}</p>
+            <p className="text-xs text-gray-600">Medicines</p>
           </div>
           <div className="text-center">
-            <p className="text-2xl font-bold text-amber-600">₹{monthlyCost.toFixed(0)}</p>
-            <p className="text-xs text-gray-500">Monthly Cost</p>
+            <p className="text-2xl font-bold text-gold-600">₹{monthlyCost.toFixed(0)}</p>
+            <p className="text-xs text-gray-600">Monthly Cost</p>
           </div>
         </div>
       </div>

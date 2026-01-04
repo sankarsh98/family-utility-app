@@ -1,31 +1,54 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { Button } from '../components/ui';
 import { Train, Pill, Shield, Users } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
-  const { signInWithGoogle, loading, error } = useAuthStore();
+  const { signInWithGoogle, loading, error, user, isAllowed } = useAuthStore();
+  const navigate = useNavigate();
+
+  // Redirect to home after successful login
+  useEffect(() => {
+    if (user && isAllowed) {
+      navigate('/', { replace: true });
+    }
+  }, [user, isAllowed, navigate]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-gradient-to-br from-primary-50 via-white to-secondary-50">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 bg-gradient-to-br from-cream-500 via-primary-50 to-secondary-50 bg-indian-pattern">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="text-center max-w-md w-full"
       >
-        {/* Logo */}
+        {/* Logo with Indian-style decorative border */}
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.1 }}
           className="mb-8"
         >
-          <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-primary-500 to-secondary-500 rounded-3xl flex items-center justify-center shadow-lg shadow-primary-500/30">
-            <Users className="w-10 h-10 text-white" />
+          <div className="relative w-24 h-24 mx-auto mb-4">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary-500 via-gold-500 to-maroon-500 rounded-3xl rotate-3 opacity-50"></div>
+            <div className="relative w-full h-full bg-gradient-to-br from-primary-500 to-maroon-500 rounded-3xl flex items-center justify-center shadow-golden border-2 border-gold-400">
+              <img src="/icon.png" alt="Family Utility" className="w-16 h-16 rounded-xl object-cover" onError={(e) => {
+                e.currentTarget.style.display = 'none';
+                e.currentTarget.nextElementSibling?.classList.remove('hidden');
+              }} />
+              <Users className="w-10 h-10 text-white hidden" />
+            </div>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">Family Utility</h1>
-          <p className="text-gray-500 mt-2">Your family's digital assistant</p>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-maroon-500 via-primary-600 to-secondary-600 bg-clip-text text-transparent">
+            Family Utility
+          </h1>
+          <p className="text-gray-600 mt-2">Your family's digital assistant</p>
+          <div className="flex justify-center gap-1 mt-3">
+            <span className="w-8 h-1 bg-primary-500 rounded-full"></span>
+            <span className="w-2 h-1 bg-gold-500 rounded-full"></span>
+            <span className="w-8 h-1 bg-secondary-500 rounded-full"></span>
+          </div>
         </motion.div>
 
         {/* Features */}
@@ -35,16 +58,16 @@ export const LoginPage: React.FC = () => {
           transition={{ delay: 0.2 }}
           className="grid grid-cols-2 gap-4 mb-8"
         >
-          <div className="p-4 bg-white rounded-2xl shadow-sm">
-            <div className="w-12 h-12 mx-auto mb-2 bg-primary-100 rounded-xl flex items-center justify-center">
+          <div className="p-4 bg-white/80 backdrop-blur rounded-2xl shadow-sm border border-primary-200">
+            <div className="w-12 h-12 mx-auto mb-2 bg-gradient-to-br from-primary-100 to-primary-200 rounded-xl flex items-center justify-center">
               <Train className="w-6 h-6 text-primary-600" />
             </div>
             <p className="text-sm font-medium text-gray-900">Train Tickets</p>
             <p className="text-xs text-gray-500">Track & manage</p>
           </div>
-          <div className="p-4 bg-white rounded-2xl shadow-sm">
-            <div className="w-12 h-12 mx-auto mb-2 bg-green-100 rounded-xl flex items-center justify-center">
-              <Pill className="w-6 h-6 text-green-600" />
+          <div className="p-4 bg-white/80 backdrop-blur rounded-2xl shadow-sm border border-secondary-200">
+            <div className="w-12 h-12 mx-auto mb-2 bg-gradient-to-br from-secondary-100 to-secondary-200 rounded-xl flex items-center justify-center">
+              <Pill className="w-6 h-6 text-secondary-600" />
             </div>
             <p className="text-sm font-medium text-gray-900">Medicines</p>
             <p className="text-xs text-gray-500">Organize & remind</p>
@@ -62,7 +85,7 @@ export const LoginPage: React.FC = () => {
             size="lg"
             onClick={() => signInWithGoogle()}
             loading={loading}
-            className="w-full"
+            className="w-full bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 shadow-saffron"
             icon={
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path

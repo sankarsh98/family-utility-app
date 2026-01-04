@@ -3,7 +3,6 @@ import { useDropzone } from 'react-dropzone';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Upload, 
-  FileText, 
   Check, 
   AlertCircle,
   Loader2,
@@ -11,6 +10,7 @@ import {
 } from 'lucide-react';
 import { Button, Card } from '../ui';
 import { TrainTicket, Passenger } from '../../types';
+import { getTrainTimes } from '../../utils/trainData';
 
 interface TicketUploaderProps {
   onTicketParsed: (ticket: Omit<TrainTicket, 'id' | 'createdAt' | 'updatedAt'>) => void;
@@ -43,87 +43,268 @@ export const TicketUploader: React.FC<TicketUploaderProps> = ({ onTicketParsed }
 
   const parseIRCTCEmail = async (text: string): Promise<ParsedTicketData> => {
     // IRCTC email parsing logic
-    // This is a simplified parser - you may need to adjust based on actual email format
+    // Handle both raw email format and HTML content in EML files
     
-    const pnrMatch = text.match(/PNR\s*[:\-]?\s*(\d{10})/i);
-    const trainMatch = text.match(/Train\s*[:\-]?\s*(\d{5})\s*[\-\/]?\s*(.+?)(?=\n|Departure|Arrival)/i);
-    const dateMatch = text.match(/(\d{1,2}[\-\/]\w{3}[\-\/]\d{4}|\d{1,2}\s+\w+\s+\d{4})/i);
-    const fromMatch = text.match(/From\s*[:\-]?\s*(.+?)\s*\((\w{2,4})\)/i) || 
-                      text.match(/Boarding\s*[:\-]?\s*(.+?)\s*\((\w{2,4})\)/i);
-    const toMatch = text.match(/To\s*[:\-]?\s*(.+?)\s*\((\w{2,4})\)/i) ||
-                    text.match(/Destination\s*[:\-]?\s*(.+?)\s*\((\w{2,4})\)/i);
-    const classMatch = text.match(/Class\s*[:\-]?\s*(\w{2,3})/i);
-    const fareMatch = text.match(/(?:Total\s*)?Fare\s*[:\-]?\s*(?:Rs\.?|₹)?\s*([\d,]+(?:\.\d{2})?)/i);
-    const quotaMatch = text.match(/Quota\s*[:\-]?\s*(\w+)/i);
-    const depTimeMatch = text.match(/Departure\s*[:\-]?\s*(\d{1,2}:\d{2})/i);
-    const arrTimeMatch = text.match(/Arrival\s*[:\-]?\s*(\d{1,2}:\d{2})/i);
+    // Remove HTML tags if present and decode content
+    let cleanText = text
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&#\d+;/g, '')
+      .replace(/=\r?\n/g, '') // Quoted-printable line breaks
+      .replace(/=([0-9A-F]{2})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+      .replace(/\s+/g, ' ');
+
+    console.log('Parsing IRCTC email text:', cleanText.substring(0, 1000));
     
-    // Parse passengers
-    const passengerRegex = /(\d+)\.\s*(.+?)\s+(\d+)\s+(M|F|Male|Female)\s+(.+?)(?:\n|$)/gi;
+    // PNR patterns - IRCTC format: "PNR No. : 4938302790"
+    const pnrMatch = cleanText.match(/PNR\s*(?:No\.?|Number)?\s*[:\s]\s*(\d{10})/i) ||
+                     cleanText.match(/(\d{10})\s*(?:is your PNR|PNR)/i);
+    
+    // Train number and name patterns - "Train No. / Name : 12733 / NARAYANADRI SF"
+    const trainMatch = cleanText.match(/Train\s*(?:No\.?\s*\/\s*Name|Number)[:\s]*(\d{5})\s*[\/\s]+([A-Za-z\s]+?)(?=\s+Quota|\s+on|\s+from)/i) ||
+                       cleanText.match(/(\d{5})\s*[\-\/]\s*([A-Za-z\s]+?)(?=\s+Quota|\s+Class|\s+From)/i);
+    
+    // Quota - "Quota : GENERAL"
+    const quotaMatch = cleanText.match(/Quota\s*[:\s]\s*([A-Z]+)/i);
+    
+    // Class - "Class : SLEEPER CLASS" or just "SL", "3A", etc.
+    const classMatch = cleanText.match(/Class\s*[:\s]\s*([A-Za-z\s]+?)(?=\s+From|\s+Transaction|$)/i) ||
+                       cleanText.match(/\b(SLEEPER\s*CLASS|FIRST\s*AC|SECOND\s*AC|THIRD\s*AC|1A|2A|3A|SL|CC|2S|3E|EC|FC)\b/i);
+    
+    // Station patterns - "From : NELLORE (NLR)" "To : LINGAMPALLI (LPI)"
+    const fromMatch = cleanText.match(/From\s*[:\s]\s*([A-Za-z\s]+?)\s*\(([A-Z]{2,5})\)/i);
+    // const toMatch = cleanText.match(/(?:To|Reservation\s*(?:Up\s*to|Upto))\s*[:\s]\s*([A-Za-z\s]+?)\s*\(?\s*([A-Z]{2,5})\s*\)?/i);
+    const toMatch = cleanText.match(/(?:To|Destination|Reserv(?:ation)?\s*(?:Upto|Up\s*To))[:\s-]*([A-Za-z\s]+?)\s*\(([A-Z]{2,5})\)/i) ||
+                    cleanText.match(/(?:to|→)\s*([A-Za-z\s]+?)\s*\(([A-Z]{2,5})\)/i);
+    // Boarding station - "Boarding At : NLR"
+    const boardingMatch = cleanText.match(/Boarding\s*(?:At)?\s*[:\s]\s*([A-Z]{2,5})/i);
+    
+    // Date of Journey - "Date of Journey : 10-Feb-2026"
+    const journeyDateMatch = cleanText.match(/Date\s*(?:of)?\s*Journey\s*[:\s]\s*(\d{1,2}[\-\/][A-Za-z]{3}[\-\/]\d{4})/i) ||
+                             cleanText.match(/Date\s*(?:of)?\s*Journey\s*[:\s]\s*(\d{1,2}[\-\/]\d{1,2}[\-\/]\d{4})/i);
+    
+    // Booking Date - "Date & Time of Booking : 03-Jan-2026 09:17:40 PM HRS"
+    const bookingDateMatch = cleanText.match(/Date\s*&\s*Time\s*of\s*Booking\s*[:\s]\s*(\d{1,2}[\-\/][A-Za-z]{3}[\-\/]\d{4})/i);
+    
+    // Departure/Arrival times - "Scheduled Departure* : N.A." or actual time
+    const depTimeMatch = cleanText.match(/(?:Scheduled\s+)?Departure\*?\s*[:\s]\s*(\d{1,2}:\d{2}(?:\s*[AP]M)?)/i);
+    const arrTimeMatch = cleanText.match(/(?:Scheduled\s+)?Arrival\s*[:\s]\s*(\d{1,2}:\d{2}(?:\s*[AP]M)?)/i);
+    
+    // Total Fare - "Total Fare Rs. 768.60" or "Rs. 768.60"
+    // const fareMatch = cleanText.match(/(?:Rs\.?|INR|₹)\s*([\d,]+(?:\.\d{2})?)/i);
+    // const fareMatch = cleanText.match(/(?:Rs\.?|INR|₹)\s*([\d,]+(?:\.\d+)?)/i);
+    const fareMatch = cleanText.match(
+  /(?:Rs\.?|INR|₹)\s*([0-9]+(?:,[0-9]{3})*(?:\.[0-9]{1,2})?)/i
+);
+    // Parse passengers from table format:
+    // "Sl. No. Name Age Gender Catering Service Option Status Coach Seat / Berth / WL No"
+    // "1 P NARENDER RAJU 53 Male N/A CNF S6 10"
     const passengers: Passenger[] = [];
+    
+    // Pattern for IRCTC table format: number, name, age, gender, N/A, status, coach, seat
+    const passengerTableRegex = /(\d+)\s+([A-Z][A-Z\s]+?)\s+(\d{1,3})\s+(Male|Female|M|F)\s+N\/A\s+(CNF|WL|RAC|CAN|RLWL|GNWL|PQWL)\s+([A-Z0-9]+)\s+(\d+)/gi;
     let passengerMatch;
     
-    while ((passengerMatch = passengerRegex.exec(text)) !== null) {
+    while ((passengerMatch = passengerTableRegex.exec(cleanText)) !== null) {
+      const gender = passengerMatch[4].toUpperCase();
+      const rawStatus = passengerMatch[5].toUpperCase();
+      const coach = passengerMatch[6];
+      const seat = passengerMatch[7];
+      
+      // Normalize status - RLWL, GNWL, PQWL are all waitlist types
+      let normalizedStatus: 'CNF' | 'WL' | 'RAC' = 'CNF';
+      if (rawStatus === 'CNF') {
+        normalizedStatus = 'CNF';
+      } else if (rawStatus === 'RAC') {
+        normalizedStatus = 'RAC';
+      } else if (['WL', 'RLWL', 'GNWL', 'PQWL'].includes(rawStatus)) {
+        normalizedStatus = 'WL';
+      }
+      
       passengers.push({
         name: passengerMatch[2].trim(),
         age: parseInt(passengerMatch[3]),
-        gender: passengerMatch[4].startsWith('M') ? 'M' : 'F',
-        seatNumber: passengerMatch[5].trim(),
-        status: 'CNF',
-        bookingStatus: passengerMatch[5].trim(),
-        currentStatus: passengerMatch[5].trim(),
+        gender: gender.startsWith('M') ? 'M' : 'F',
+        seatNumber: `${coach}-${seat}`,
+        status: normalizedStatus,
+        bookingStatus: rawStatus,
+        currentStatus: `${coach}/${seat}`,
       });
     }
     
-    // If no passengers found via regex, try alternative parsing
+    // Alternative pattern for different format: "1. Name, Age, Gender, Status"
     if (passengers.length === 0) {
-      // Fallback: create a single passenger entry
-      passengers.push({
-        name: 'Passenger 1',
-        age: 30,
-        gender: 'M',
-        seatNumber: 'TBA',
-        status: 'CNF',
-        bookingStatus: 'CNF',
-        currentStatus: 'CNF',
-      });
+      const altPassengerRegex = /(\d+)\.\s*([A-Za-z\s]+?),?\s*(\d+)\s*(?:yrs?|years?)?,?\s*(M|F|Male|Female)\s*,?\s*(CNF|WL|RAC|RLWL)/gi;
+      let altMatch;
+      while ((altMatch = altPassengerRegex.exec(cleanText)) !== null) {
+        const gender = altMatch[4].toUpperCase();
+        const rawStatus = altMatch[5].toUpperCase();
+        let normalizedStatus: 'CNF' | 'WL' | 'RAC' = 'CNF';
+        if (rawStatus === 'CNF') normalizedStatus = 'CNF';
+        else if (rawStatus === 'RAC') normalizedStatus = 'RAC';
+        else normalizedStatus = 'WL';
+        
+        passengers.push({
+          name: altMatch[2].trim(),
+          age: parseInt(altMatch[3]),
+          gender: gender.startsWith('M') ? 'M' : 'F',
+          seatNumber: 'TBA',
+          status: normalizedStatus,
+          bookingStatus: rawStatus,
+          currentStatus: rawStatus,
+        });
+      }
     }
-
-    // Determine status from text
-    let status: 'CNF' | 'WL' | 'RAC' | 'CAN' = 'CNF';
-    if (text.includes('CANCELLED') || text.includes('CAN')) status = 'CAN';
-    else if (text.includes('RAC')) status = 'RAC';
-    else if (text.includes('WL') || text.includes('WAITING')) status = 'WL';
-
-    // Parse journey date
-    let journeyDate = new Date();
-    if (dateMatch) {
-      const dateStr = dateMatch[1];
-      journeyDate = new Date(dateStr);
-      if (isNaN(journeyDate.getTime())) {
-        journeyDate = new Date();
+    
+    // If still no passengers found, create a placeholder
+    if (passengers.length === 0) {
+      // Try to get adult/child count
+      const adultMatch = cleanText.match(/Adult\s*[:\s]\s*(\d+)/i);
+      const numPassengers = parseInt(adultMatch?.[1] || '1');
+      for (let i = 1; i <= numPassengers; i++) {
+        passengers.push({
+          name: `Passenger ${i}`,
+          age: 30,
+          gender: 'M',
+          seatNumber: 'TBA',
+          status: 'CNF',
+          bookingStatus: 'CNF',
+          currentStatus: 'CNF',
+        });
       }
     }
 
-    return {
+    // Determine overall status - check ALL passengers
+    // If any passenger has WL or RAC, the overall status reflects that
+    let status: 'CNF' | 'WL' | 'RAC' | 'CAN' = 'CNF';
+    let hasWL = false;
+    let hasRAC = false;
+    
+    for (const p of passengers) {
+      if (p.status === 'WL') hasWL = true;
+      if (p.status === 'RAC') hasRAC = true;
+    }
+    
+    // Priority: CAN > WL > RAC > CNF
+    if (cleanText.match(/CANCELLED|ticket.*cancel/i)) {
+      status = 'CAN';
+    } else if (hasWL) {
+      status = 'WL';
+    } else if (hasRAC) {
+      status = 'RAC';
+    }
+    // All passengers confirmed = CNF (default)
+
+    // Parse journey date - format: "10-Feb-2026" or "10/02/2026"
+    let journeyDate = new Date();
+    if (journeyDateMatch) {
+      const dateStr = journeyDateMatch[1];
+      // Parse DD-Mon-YYYY format (e.g., "10-Feb-2026")
+      const monthNames: { [key: string]: number } = {
+        'jan': 0, 'feb': 1, 'mar': 2, 'apr': 3, 'may': 4, 'jun': 5,
+        'jul': 6, 'aug': 7, 'sep': 8, 'oct': 9, 'nov': 10, 'dec': 11
+      };
+      const parts = dateStr.split(/[\-\/]/);
+      if (parts.length === 3) {
+        const day = parseInt(parts[0]);
+        const monthStr = parts[1].toLowerCase();
+        const month = monthNames[monthStr.substring(0, 3)] ?? parseInt(parts[1]) - 1;
+        const year = parseInt(parts[2]);
+        journeyDate = new Date(year, month, day);
+      }
+    }
+    
+    // Parse booking date
+    let bookingDate = new Date();
+    if (bookingDateMatch) {
+      const dateStr = bookingDateMatch[1];
+      const monthNames: { [key: string]: number } = {
+        'jan': 0, 'feb': 1, 'mar': 2, 'apr': 3, 'may': 4, 'jun': 5,
+        'jul': 6, 'aug': 7, 'sep': 8, 'oct': 9, 'nov': 10, 'dec': 11
+      };
+      const parts = dateStr.split(/[\-\/]/);
+      if (parts.length === 3) {
+        const day = parseInt(parts[0]);
+        const monthStr = parts[1].toLowerCase();
+        const month = monthNames[monthStr.substring(0, 3)] ?? parseInt(parts[1]) - 1;
+        const year = parseInt(parts[2]);
+        bookingDate = new Date(year, month, day);
+      }
+    }
+    
+    // Convert class name to code
+    const classNameToCode: { [key: string]: string } = {
+      'sleeper class': 'SL',
+      'sleeper': 'SL',
+      'first ac': '1A',
+      'first class ac': '1A',
+      'second ac': '2A',
+      'second class ac': '2A',
+      'third ac': '3A',
+      'third class ac': '3A',
+      'chair car': 'CC',
+      'second sitting': '2S',
+      'ac 3 economy': '3E',
+      'executive class': 'EC',
+      'first class': 'FC',
+    };
+    
+    let travelClass = 'SL';
+    if (classMatch) {
+      const classValue = classMatch[1].trim().toUpperCase();
+      // Check if it's already a code
+      if (['1A', '2A', '3A', 'SL', 'CC', '2S', '3E', 'EC', 'FC'].includes(classValue)) {
+        travelClass = classValue;
+      } else {
+        // Try to convert from name
+        const lowerClass = classMatch[1].trim().toLowerCase();
+        travelClass = classNameToCode[lowerClass] || 'SL';
+      }
+    }
+    
+    // Use boarding station code if available, otherwise use from station
+    const boardingCode = boardingMatch?.[1] || fromMatch?.[2] || 'UNK';
+    const destCode = toMatch?.[2]?.trim() || 'UNK';
+    
+    // Try to get train times from lookup table
+    const trainTimes = getTrainTimes(
+      trainMatch?.[1] || '',
+      boardingCode,
+      destCode
+    );
+    
+    // Use looked up times if available, otherwise use parsed or default
+    const departureTime = trainTimes?.boardingTime || depTimeMatch?.[1] || 'N.A.';
+    const arrivalTime = trainTimes?.arrivalTime || arrTimeMatch?.[1] || 'N.A.';
+    const finalTrainName = trainTimes?.trainName || trainMatch?.[2]?.trim() || 'Unknown Train';
+
+    const result = {
       pnr: pnrMatch?.[1] || 'Unknown',
       trainNumber: trainMatch?.[1] || 'Unknown',
-      trainName: trainMatch?.[2]?.trim() || 'Unknown Train',
+      trainName: finalTrainName,
       journeyDate,
       boardingStation: fromMatch?.[1]?.trim() || 'Unknown',
-      boardingStationCode: fromMatch?.[2]?.trim() || 'UNK',
+      boardingStationCode: boardingCode,
       destinationStation: toMatch?.[1]?.trim() || 'Unknown',
-      destinationStationCode: toMatch?.[2]?.trim() || 'UNK',
-      departureTime: depTimeMatch?.[1] || '00:00',
-      arrivalTime: arrTimeMatch?.[1] || '00:00',
-      travelClass: classMatch?.[1] || 'SL',
-      quota: quotaMatch?.[1] || 'GENERAL',
+      destinationStationCode: destCode,
+      departureTime,
+      arrivalTime,
+      travelClass,
+      quota: quotaMatch?.[1]?.toUpperCase() || 'GENERAL',
       passengers,
-      totalFare: parseFloat(fareMatch?.[1]?.replace(',', '') || '0'),
-      bookingDate: new Date(),
+      totalFare: parseFloat(fareMatch?.[1]?.replace(/,/g, '') || '0'),
+      bookingDate,
       status,
-      chartStatus: 'NOT_PREPARED',
+      chartStatus: 'NOT_PREPARED' as const,
     };
+
+    console.log('Parsed IRCTC ticket:', result);
+    return result;
   };
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
