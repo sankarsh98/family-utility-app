@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { Button, Card } from '../ui';
 import { TrainTicket, Passenger } from '../../types';
-import { getTrainTimes } from '../../utils/trainData';
+import { getTrainTimes, fetchTrainSchedule, COMMON_TRAINS } from '../../utils/trainData';
 
 interface TicketUploaderProps {
   onTicketParsed: (ticket: Omit<TrainTicket, 'id' | 'createdAt' | 'updatedAt'>) => void;
@@ -39,7 +39,8 @@ interface ParsedTicketData {
 export const TicketUploader: React.FC<TicketUploaderProps> = ({ onTicketParsed }) => {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [parsedData, setParsedData] = useState<ParsedTicketData | null>(null);
+  const [parsedTickets, setParsedTickets] = useState<ParsedTicketData[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   const parseIRCTCEmail = async (text: string): Promise<ParsedTicketData> => {
     // IRCTC email parsing logic
@@ -98,9 +99,9 @@ export const TicketUploader: React.FC<TicketUploaderProps> = ({ onTicketParsed }
     // Total Fare - "Total Fare Rs. 768.60" or "Rs. 768.60"
     // const fareMatch = cleanText.match(/(?:Rs\.?|INR|₹)\s*([\d,]+(?:\.\d{2})?)/i);
     // const fareMatch = cleanText.match(/(?:Rs\.?|INR|₹)\s*([\d,]+(?:\.\d+)?)/i);
-    const fareMatch = cleanText.match(
-  /(?:Rs\.?|INR|₹)\s*([0-9]+(?:,[0-9]{3})*(?:\.[0-9]{1,2})?)/i
-);
+    // Match fare in format: "Rs. 768.60 *#" or "Rs. 768.60" or "₹768.60"
+    const fareMatch = cleanText.match(/(?:Rs\.?|INR|₹)\s*([0-9,]+(?:\.[0-9]{1,2})?)\s*\*?#?/i) ||
+                      cleanText.match(/Total\s*Fare[:\s]*(?:Rs\.?|INR|₹)?\s*([0-9,]+(?:\.[0-9]{1,2})?)/i);
     // Parse passengers from table format:
     // "Sl. No. Name Age Gender Catering Service Option Status Coach Seat / Berth / WL No"
     // "1 P NARENDER RAJU 53 Male N/A CNF S6 10"
@@ -184,14 +185,24 @@ export const TicketUploader: React.FC<TicketUploaderProps> = ({ onTicketParsed }
     let status: 'CNF' | 'WL' | 'RAC' | 'CAN' = 'CNF';
     let hasWL = false;
     let hasRAC = false;
+    let hasCAN = false;
     
     for (const p of passengers) {
       if (p.status === 'WL') hasWL = true;
       if (p.status === 'RAC') hasRAC = true;
+      // Check if passenger status indicates cancellation
+      if (p.bookingStatus === 'CAN') hasCAN = true;
     }
     
+    // Check for explicit ticket cancellation - more specific patterns
+    // This should match "Ticket Cancelled" or "Booking Cancelled" but not "Cancellation Charges"
+    const isCancelled = cleanText.match(/(?:ticket|booking|PNR)\s+(?:has\s+been\s+)?cancell?ed/i) ||
+                        cleanText.match(/cancell?ation\s+of\s+(?:ticket|booking|PNR)/i) ||
+                        cleanText.match(/your\s+(?:ticket|booking)\s+(?:is|has\s+been)\s+cancell?ed/i) ||
+                        hasCAN;
+    
     // Priority: CAN > WL > RAC > CNF
-    if (cleanText.match(/CANCELLED|ticket.*cancel/i)) {
+    if (isCancelled) {
       status = 'CAN';
     } else if (hasWL) {
       status = 'WL';
@@ -270,18 +281,25 @@ export const TicketUploader: React.FC<TicketUploaderProps> = ({ onTicketParsed }
     // Use boarding station code if available, otherwise use from station
     const boardingCode = boardingMatch?.[1] || fromMatch?.[2] || 'UNK';
     const destCode = toMatch?.[2]?.trim() || 'UNK';
+    const trainNum = trainMatch?.[1] || '';
     
-    // Try to get train times from lookup table
-    const trainTimes = getTrainTimes(
-      trainMatch?.[1] || '',
-      boardingCode,
-      destCode
-    );
+    // Try to get train times from lookup table first (sync)
+    let trainTimes = getTrainTimes(trainNum, boardingCode, destCode);
+    
+    // If not found in static data, try to fetch from API (async)
+    if (!trainTimes && trainNum) {
+      try {
+        trainTimes = await fetchTrainSchedule(trainNum, boardingCode, destCode);
+      } catch (error) {
+        console.log('Failed to fetch train schedule from API:', error);
+      }
+    }
     
     // Use looked up times if available, otherwise use parsed or default
     const departureTime = trainTimes?.boardingTime || depTimeMatch?.[1] || 'N.A.';
     const arrivalTime = trainTimes?.arrivalTime || arrTimeMatch?.[1] || 'N.A.';
-    const finalTrainName = trainTimes?.trainName || trainMatch?.[2]?.trim() || 'Unknown Train';
+    // Get train name from: API result > parsed from email > common trains lookup > default
+    const finalTrainName = trainTimes?.trainName || trainMatch?.[2]?.trim() || COMMON_TRAINS[trainNum] || 'Unknown Train';
 
     const result = {
       pnr: pnrMatch?.[1] || 'Unknown',
@@ -308,36 +326,45 @@ export const TicketUploader: React.FC<TicketUploaderProps> = ({ onTicketParsed }
   };
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
-    if (!file) return;
+    if (acceptedFiles.length === 0) return;
 
     setUploading(true);
     setError(null);
-    setParsedData(null);
+    setParsedTickets([]);
+    setCurrentIndex(0);
 
-    try {
-      let text = '';
-      
-      if (file.type === 'application/pdf') {
-        // For PDF files, we need to extract text
-        // In a real app, you would use pdf.js or a backend service
-        // For now, we'll show a message about PDF handling
-        setError('PDF parsing requires backend processing. Please use the manual entry form or paste the email text.');
-        setUploading(false);
-        return;
-      } else if (file.type.includes('text') || file.name.endsWith('.eml')) {
-        text = await file.text();
-      } else {
-        throw new Error('Unsupported file format. Please upload a text file or EML file.');
+    const successfullyParsed: ParsedTicketData[] = [];
+    const errors: string[] = [];
+
+    for (const file of acceptedFiles) {
+      try {
+        let text = '';
+        
+        if (file.type === 'application/pdf') {
+          errors.push(`${file.name}: PDF parsing requires backend processing.`);
+          continue;
+        } else if (file.type.includes('text') || file.name.endsWith('.eml')) {
+          text = await file.text();
+        } else {
+          errors.push(`${file.name}: Unsupported file format.`);
+          continue;
+        }
+
+        const parsed = await parseIRCTCEmail(text);
+        successfullyParsed.push(parsed);
+      } catch (err: any) {
+        errors.push(`${file.name}: ${err.message || 'Failed to parse'}`);
       }
-
-      const parsed = await parseIRCTCEmail(text);
-      setParsedData(parsed);
-    } catch (err: any) {
-      setError(err.message || 'Failed to parse ticket');
-    } finally {
-      setUploading(false);
     }
+
+    if (errors.length > 0 && successfullyParsed.length === 0) {
+      setError(errors.join('\n'));
+    } else if (errors.length > 0) {
+      setError(`Parsed ${successfullyParsed.length} tickets. Errors: ${errors.length}`);
+    }
+
+    setParsedTickets(successfullyParsed);
+    setUploading(false);
   }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -347,13 +374,37 @@ export const TicketUploader: React.FC<TicketUploaderProps> = ({ onTicketParsed }
       'text/plain': ['.txt'],
       'message/rfc822': ['.eml'],
     },
-    maxFiles: 1,
+    multiple: true,
   });
 
+  const currentTicket = parsedTickets[currentIndex];
+
   const handleConfirm = () => {
-    if (parsedData) {
-      onTicketParsed(parsedData);
-      setParsedData(null);
+    if (currentTicket) {
+      onTicketParsed(currentTicket);
+      if (currentIndex < parsedTickets.length - 1) {
+        setCurrentIndex(currentIndex + 1);
+      } else {
+        setParsedTickets([]);
+        setCurrentIndex(0);
+      }
+    }
+  };
+
+  const handleConfirmAll = () => {
+    parsedTickets.forEach(ticket => {
+      onTicketParsed(ticket);
+    });
+    setParsedTickets([]);
+    setCurrentIndex(0);
+  };
+
+  const handleSkip = () => {
+    if (currentIndex < parsedTickets.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+    } else {
+      setParsedTickets([]);
+      setCurrentIndex(0);
     }
   };
 
@@ -383,7 +434,7 @@ export const TicketUploader: React.FC<TicketUploaderProps> = ({ onTicketParsed }
               {isDragActive ? 'Drop the file here' : 'Upload IRCTC Ticket Email'}
             </p>
             <p className="text-sm text-gray-500 mt-1">
-              Drag & drop or click to select (PDF, TXT, EML)
+              Drag & drop or click to select (PDF, TXT, EML) - Multiple files supported
             </p>
           </div>
         </div>
@@ -412,7 +463,7 @@ export const TicketUploader: React.FC<TicketUploaderProps> = ({ onTicketParsed }
 
       {/* Parsed data preview */}
       <AnimatePresence>
-        {parsedData && (
+        {currentTicket && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -420,52 +471,85 @@ export const TicketUploader: React.FC<TicketUploaderProps> = ({ onTicketParsed }
           >
             <Card>
               <div className="p-4">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="p-2 bg-green-100 rounded-full">
-                    <Check className="w-5 h-5 text-green-600" />
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-green-100 rounded-full">
+                      <Check className="w-5 h-5 text-green-600" />
+                    </div>
+                    <h3 className="font-semibold text-gray-900">
+                      {parsedTickets.length > 1 
+                        ? `Ticket ${currentIndex + 1} of ${parsedTickets.length}` 
+                        : 'Ticket Parsed Successfully'}
+                    </h3>
                   </div>
-                  <h3 className="font-semibold text-gray-900">Ticket Parsed Successfully</h3>
+                  {parsedTickets.length > 1 && (
+                    <span className="text-sm text-gray-500">
+                      {parsedTickets.length - currentIndex - 1} remaining
+                    </span>
+                  )}
                 </div>
 
                 <div className="space-y-3 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-500">PNR</span>
-                    <span className="font-mono font-medium">{parsedData.pnr}</span>
+                    <span className="font-mono font-medium">{currentTicket.pnr}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Train</span>
-                    <span className="font-medium">{parsedData.trainNumber} - {parsedData.trainName}</span>
+                    <span className="font-medium">{currentTicket.trainNumber} - {currentTicket.trainName}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Route</span>
                     <span className="font-medium">
-                      {parsedData.boardingStationCode} → {parsedData.destinationStationCode}
+                      {currentTicket.boardingStationCode} → {currentTicket.destinationStationCode}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Journey Date</span>
+                    <span className="font-medium">
+                      {currentTicket.journeyDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Passengers</span>
-                    <span className="font-medium">{parsedData.passengers.length}</span>
+                    <span className="font-medium">{currentTicket.passengers.length}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Fare</span>
-                    <span className="font-medium">₹{parsedData.totalFare}</span>
+                    <span className="font-medium text-maroon-600">₹{currentTicket.totalFare.toFixed(2)}</span>
                   </div>
                 </div>
 
-                <div className="flex gap-3 mt-4 pt-4 border-t border-gray-100">
+                <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100">
                   <Button
                     variant="outline"
-                    onClick={() => setParsedData(null)}
+                    onClick={() => { setParsedTickets([]); setCurrentIndex(0); }}
                     className="flex-1"
                   >
-                    Cancel
+                    Cancel All
                   </Button>
+                  {parsedTickets.length > 1 && (
+                    <>
+                      <Button
+                        variant="ghost"
+                        onClick={handleSkip}
+                      >
+                        Skip
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={handleConfirmAll}
+                      >
+                        Add All ({parsedTickets.length})
+                      </Button>
+                    </>
+                  )}
                   <Button
                     variant="primary"
                     onClick={handleConfirm}
                     className="flex-1"
                   >
-                    Add Ticket
+                    {parsedTickets.length > 1 ? 'Add This' : 'Add Ticket'}
                   </Button>
                 </div>
               </div>

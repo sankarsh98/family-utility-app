@@ -8,6 +8,8 @@ import { LoginPage } from './pages/LoginPage';
 import { HomePage } from './pages/HomePage';
 import { TrainsPage } from './pages/TrainsPage';
 import { MedicinesPage } from './pages/MedicinesPage';
+import { UserManagementPage } from './pages/UserManagementPage';
+import { TripDetailPage } from './pages/TripDetailPage';
 
 // Protected Route component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -68,10 +70,26 @@ const App: React.FC = () => {
           }
         />
         <Route
+          path="/trips/:tripId"
+          element={
+            <ProtectedRoute>
+              <TripDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/medicines/*"
           element={
             <ProtectedRoute>
               <MedicinesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/users"
+          element={
+            <ProtectedRoute>
+              <UserManagementPage />
             </ProtectedRoute>
           }
         />

@@ -4,7 +4,6 @@ import { format } from 'date-fns';
 import { 
   Train, 
   Calendar, 
-  Clock, 
   Users,
   ChevronRight,
   Armchair,
@@ -71,7 +70,6 @@ export const TicketCard: React.FC<TicketCardProps> = ({ ticket, onClick, onEdit,
             <p className="text-xs text-gray-500 uppercase">From</p>
             <p className="font-semibold text-maroon-600">{ticket.boardingStationCode}</p>
             <p className="text-sm text-gray-600 truncate">{ticket.boardingStation}</p>
-            <p className="text-sm text-primary-600 font-medium">{ticket.departureTime}</p>
           </div>
           
           <div className="flex flex-col items-center px-2">
@@ -84,7 +82,6 @@ export const TicketCard: React.FC<TicketCardProps> = ({ ticket, onClick, onEdit,
             <p className="text-xs text-gray-500 uppercase">To</p>
             <p className="font-semibold text-maroon-600">{ticket.destinationStationCode}</p>
             <p className="text-sm text-gray-600 truncate">{ticket.destinationStation}</p>
-            <p className="text-sm text-primary-600 font-medium">{ticket.arrivalTime}</p>
           </div>
         </div>
 
@@ -124,9 +121,11 @@ export const TicketCard: React.FC<TicketCardProps> = ({ ticket, onClick, onEdit,
         </div>
 
         {/* Fare */}
-        <div className="mt-3 text-right">
-          <span className="text-lg font-bold text-gray-900">₹{ticket.totalFare}</span>
-        </div>
+        {ticket.totalFare > 0 && (
+          <div className="mt-3 text-right">
+            <span className="text-lg font-bold text-maroon-600">₹{ticket.totalFare.toFixed(2)}</span>
+          </div>
+        )}
       </div>
     </Card>
   );
@@ -155,14 +154,12 @@ export const TicketDetailCard: React.FC<TicketDetailCardProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-2xl font-bold">{ticket.boardingStationCode}</p>
-              <p className="text-sm text-white/80">{ticket.departureTime}</p>
             </div>
             <div className="flex-1 px-4">
               <div className="border-t border-dashed border-white/40" />
             </div>
             <div className="text-right">
               <p className="text-2xl font-bold">{ticket.destinationStationCode}</p>
-              <p className="text-sm text-white/80">{ticket.arrivalTime}</p>
             </div>
           </div>
         </div>
@@ -196,10 +193,12 @@ export const TicketDetailCard: React.FC<TicketDetailCardProps> = ({
               <p className="text-sm text-gray-500">Quota</p>
               <p className="font-semibold text-gray-900">{ticket.quota}</p>
             </div>
-            <div>
-              <p className="text-sm text-gray-500">Total Fare</p>
-              <p className="font-semibold text-gray-900">₹{ticket.totalFare}</p>
-            </div>
+            {ticket.totalFare > 0 && (
+              <div>
+                <p className="text-sm text-gray-500">Total Fare</p>
+                <p className="font-semibold text-maroon-600">₹{ticket.totalFare.toFixed(2)}</p>
+              </div>
+            )}
           </div>
         </div>
       </Card>
@@ -253,10 +252,6 @@ export const TicketDetailCard: React.FC<TicketDetailCardProps> = ({
               <div className="flex-1">
                 <p className="font-semibold text-gray-900">{ticket.boardingStation}</p>
                 <p className="text-sm text-gray-500">{ticket.boardingStationCode}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <Clock className="w-4 h-4 text-primary-600" />
-                  <span className="text-primary-600 font-medium">{ticket.departureTime}</span>
-                </div>
               </div>
             </div>
             
@@ -268,10 +263,6 @@ export const TicketDetailCard: React.FC<TicketDetailCardProps> = ({
               <div className="flex-1">
                 <p className="font-semibold text-gray-900">{ticket.destinationStation}</p>
                 <p className="text-sm text-gray-500">{ticket.destinationStationCode}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <Clock className="w-4 h-4 text-secondary-600" />
-                  <span className="text-secondary-600 font-medium">{ticket.arrivalTime}</span>
-                </div>
               </div>
             </div>
           </div>

@@ -84,29 +84,6 @@ export const TripCard: React.FC<TripCardProps> = ({ trip, onClick, onEdit, onDel
             <p className="text-xs text-gray-500">Spent</p>
           </div>
         </div>
-
-        {/* Photos preview */}
-        {trip.photos.length > 0 && (
-          <div className="flex gap-1 mt-3 -mx-1">
-            {trip.photos.slice(0, 4).map((photo, index) => (
-              <div 
-                key={photo.id}
-                className="relative flex-1 aspect-square rounded-lg overflow-hidden"
-              >
-                <img 
-                  src={photo.url} 
-                  alt="" 
-                  className="w-full h-full object-cover"
-                />
-                {index === 3 && trip.photos.length > 4 && (
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                    <span className="text-white font-semibold">+{trip.photos.length - 4}</span>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </Card>
   );

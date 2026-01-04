@@ -7,7 +7,8 @@ import {
   Home, 
   LogOut,
   Menu,
-  X
+  X,
+  Users
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 
@@ -16,7 +17,7 @@ interface LayoutProps {
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const { user, signOut } = useAuthStore();
+  const { user, signOut, canManageUsers } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = React.useState(false);
@@ -25,6 +26,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     { path: '/', icon: Home, label: 'Home' },
     { path: '/trains', icon: Train, label: 'Trains' },
     { path: '/medicines', icon: Pill, label: 'Medicines' },
+    // Only show Users for super admins
+    ...(canManageUsers() ? [{ path: '/users', icon: Users, label: 'Users' }] : []),
   ];
 
   const isActive = (path: string) => {

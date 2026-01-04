@@ -133,25 +133,78 @@ export async function fetchTrainSchedule(
   const staticResult = getTrainTimes(trainNumber, boardingStationCode, destinationStationCode);
   if (staticResult) return staticResult;
 
-  // In production, you would call an actual API here
-  // Example with RapidAPI:
-  // try {
-  //   const response = await fetch(
-  //     `https://irctc1.p.rapidapi.com/api/v2/getTrainSchedule?trainNo=${trainNumber}`,
-  //     {
-  //       headers: {
-  //         'X-RapidAPI-Key': 'YOUR_API_KEY',
-  //         'X-RapidAPI-Host': 'irctc1.p.rapidapi.com'
-  //       }
-  //     }
-  //   );
-  //   const data = await response.json();
-  //   // Parse and return schedule
-  // } catch (error) {
-  //   console.error('Failed to fetch train schedule:', error);
-  // }
+  // Try to fetch from a free public API
+  try {
+    // Using the Indian Railways API via confirmtkt (free tier available)
+    // Note: In production, you should use your own API key and handle rate limits
+    const response = await fetch(
+      `https://indian-railway-api.cyclic.app/trains/getSchedule/${trainNumber}`,
+      { 
+        signal: AbortSignal.timeout(5000), // 5 second timeout
+        headers: {
+          'Accept': 'application/json',
+        }
+      }
+    );
+    
+    if (response.ok) {
+      const data = await response.json();
+      if (data && data.schedule && Array.isArray(data.schedule)) {
+        const boardingStation = data.schedule.find((s: any) => 
+          s.stationCode === boardingStationCode || 
+          s.station_code === boardingStationCode
+        );
+        const destStation = data.schedule.find((s: any) => 
+          s.stationCode === destinationStationCode || 
+          s.station_code === destinationStationCode
+        );
+        
+        if (boardingStation && destStation) {
+          return {
+            trainNumber,
+            trainName: data.trainName || data.train_name || COMMON_TRAINS[trainNumber] || 'Express',
+            boardingTime: boardingStation.departureTime || boardingStation.departure || 'N.A.',
+            arrivalTime: destStation.arrivalTime || destStation.arrival || 'N.A.',
+            duration: calculateDuration(
+              boardingStation.departureTime || boardingStation.departure,
+              destStation.arrivalTime || destStation.arrival,
+              boardingStation.day || 1,
+              destStation.day || 1
+            ),
+          };
+        }
+      }
+    }
+  } catch (error) {
+    console.log('External API failed, using estimated times');
+  }
 
+  // If external API fails, return null and let the caller handle it
   return null;
+}
+
+/**
+ * Calculate duration between two times
+ */
+function calculateDuration(depTime: string, arrTime: string, depDay: number, arrDay: number): string {
+  if (!depTime || !arrTime || depTime === '--' || arrTime === '--') return 'N.A.';
+  
+  try {
+    const [depHour, depMin] = depTime.split(':').map(Number);
+    const [arrHour, arrMin] = arrTime.split(':').map(Number);
+    
+    let totalMinutes = (arrHour * 60 + arrMin) - (depHour * 60 + depMin);
+    if (arrDay > depDay) {
+      totalMinutes += (arrDay - depDay) * 24 * 60;
+    }
+    if (totalMinutes < 0) totalMinutes += 24 * 60; // Next day
+    
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return `${hours}h ${minutes}m`;
+  } catch {
+    return 'N.A.';
+  }
 }
 
 /**

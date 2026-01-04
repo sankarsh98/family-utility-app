@@ -11,6 +11,7 @@ export const USER_ROLES: Record<string, UserRole> = {
   'sreeharshpallela888@gmail.com': 'read_only',
   'sreeharshpallela@gmail.com': 'read_only',
   'pallelaneeraja77@gmail.com': 'read_only',
+  'pallelanraju@gmail.com' : 'admin'
   // Add more users and their roles here
 };
 

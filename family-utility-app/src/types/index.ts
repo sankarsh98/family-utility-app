@@ -68,6 +68,7 @@ export interface PNRStatus {
 export interface Trip {
   id: string;
   name: string;
+  description?: string;
   startDate: Date;
   endDate: Date;
   destination: string;

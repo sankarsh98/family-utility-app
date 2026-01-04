@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 
@@ -25,10 +26,10 @@ export const Modal: React.FC<ModalProps> = ({
     full: 'max-w-full mx-4',
   };
 
-  return (
+  const modalContent = (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
+        <div className="fixed inset-0 z-[9999] overflow-y-auto">
           <div className="min-h-screen px-4 flex items-center justify-center">
             {/* Backdrop */}
             <motion.div
@@ -73,6 +74,10 @@ export const Modal: React.FC<ModalProps> = ({
       )}
     </AnimatePresence>
   );
+
+  // Use portal to render modal at document body level
+  // This ensures modal appears above all other content regardless of parent z-index
+  return createPortal(modalContent, document.body);
 };
 
 interface DrawerProps {
@@ -102,10 +107,10 @@ export const Drawer: React.FC<DrawerProps> = ({
     bottom: { y: '100%' },
   };
 
-  return (
+  const drawerContent = (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50">
+        <div className="fixed inset-0 z-[9999]">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -148,4 +153,6 @@ export const Drawer: React.FC<DrawerProps> = ({
       )}
     </AnimatePresence>
   );
+
+  return createPortal(drawerContent, document.body);
 };

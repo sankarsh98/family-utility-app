@@ -11,7 +11,7 @@ import {
   Upload
 } from 'lucide-react';
 import { Button, SearchInput, EmptyState, Card, Modal, Input, Select, TextArea } from '../components/ui';
-import { TicketCard } from '../components/trains/TicketCard';
+import { TicketCard, TicketDetailCard } from '../components/trains/TicketCard';
 import { TicketFiltersPanel, QuickFilter } from '../components/trains/TicketFilters';
 import { TicketUploader } from '../components/trains/TicketUploader';
 import { PNRChecker } from '../components/trains/PNRChecker';
@@ -55,6 +55,7 @@ export const TrainsPage: React.FC = () => {
   const [editingTicket, setEditingTicket] = useState<TrainTicket | null>(null);
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'ticket' | 'trip', id: string } | null>(null);
+  const [viewingTicket, setViewingTicket] = useState<TrainTicket | null>(null);
 
   useEffect(() => {
     fetchTickets();
@@ -205,7 +206,7 @@ export const TrainsPage: React.FC = () => {
                     >
                       <TicketCard
                         ticket={ticket}
-                        onClick={() => navigate(`/trains/${ticket.id}`)}
+                        onClick={() => setViewingTicket(ticket)}
                         onEdit={(t) => setEditingTicket(t)}
                         onDelete={(id) => setDeleteConfirm({ type: 'ticket', id })}
                         canEdit={canEdit()}
@@ -312,6 +313,18 @@ export const TrainsPage: React.FC = () => {
         size="lg"
       >
         <TicketUploader onTicketParsed={handleAddTicket} />
+      </Modal>
+
+      {/* Ticket Detail Modal */}
+      <Modal
+        isOpen={!!viewingTicket}
+        onClose={() => setViewingTicket(null)}
+        title="Ticket Details"
+        size="lg"
+      >
+        {viewingTicket && (
+          <TicketDetailCard ticket={viewingTicket} />
+        )}
       </Modal>
 
       {/* Manual Entry Modal */}
@@ -554,35 +567,12 @@ const ManualTicketForm: React.FC<ManualTicketFormProps> = ({ ticket, onSubmit, o
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <Input
-            type="time"
-            label="Departure Time"
-            value={formData.departureTime}
-            onChange={(e) => setFormData({ ...formData, departureTime: e.target.value })}
-          />
-          <Input
-            type="time"
-            label="Arrival Time"
-            value={formData.arrivalTime}
-            onChange={(e) => setFormData({ ...formData, arrivalTime: e.target.value })}
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <Select
-            label="Class"
-            value={formData.travelClass}
-            onChange={(e) => setFormData({ ...formData, travelClass: e.target.value })}
-            options={Object.entries(TRAIN_CLASSES).map(([value, label]) => ({ value, label }))}
-          />
-          <Input
-            type="number"
-            label="Total Fare (₹)"
-            value={formData.totalFare || ''}
-            onChange={(e) => setFormData({ ...formData, totalFare: parseFloat(e.target.value) })}
-          />
-        </div>
+        <Select
+          label="Class"
+          value={formData.travelClass}
+          onChange={(e) => setFormData({ ...formData, travelClass: e.target.value })}
+          options={Object.entries(TRAIN_CLASSES).map(([value, label]) => ({ value, label }))}
+        />
       </div>
 
       {/* Passengers */}
@@ -666,9 +656,31 @@ const TripForm: React.FC<TripFormProps> = ({ trip, onSubmit, onCancel }) => {
     totalBudget: trip?.totalBudget || '',
     notes: trip?.notes || '',
   });
+  
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    
+    if (!formData.name.trim()) {
+      newErrors.name = 'Trip name is required';
+    }
+    if (!formData.startDate) {
+      newErrors.startDate = 'Start date is required';
+    }
+    if (!formData.endDate) {
+      newErrors.endDate = 'End date is required';
+    }
+    if (formData.startDate && formData.endDate && new Date(formData.endDate) < new Date(formData.startDate)) {
+      newErrors.endDate = 'End date must be after start date';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSubmit = () => {
-    if (!formData.name || !formData.startDate || !formData.endDate) return;
+    if (!validateForm()) return;
 
     onSubmit({
       name: formData.name,
@@ -687,11 +699,20 @@ const TripForm: React.FC<TripFormProps> = ({ trip, onSubmit, onCancel }) => {
 
   return (
     <div className="space-y-4">
+      {/* Required fields notice */}
+      <div className="text-sm text-gray-500 flex items-center gap-1">
+        <span className="text-red-500">*</span> Required fields
+      </div>
+      
       <Input
         label="Trip Name *"
         placeholder="e.g., Goa Vacation 2026"
         value={formData.name}
-        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+        onChange={(e) => {
+          setFormData({ ...formData, name: e.target.value });
+          if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
+        }}
+        error={errors.name}
       />
       <Input
         label="Destination"
@@ -704,13 +725,21 @@ const TripForm: React.FC<TripFormProps> = ({ trip, onSubmit, onCancel }) => {
           type="date"
           label="Start Date *"
           value={formData.startDate}
-          onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+          onChange={(e) => {
+            setFormData({ ...formData, startDate: e.target.value });
+            if (errors.startDate) setErrors(prev => ({ ...prev, startDate: '' }));
+          }}
+          error={errors.startDate}
         />
         <Input
           type="date"
           label="End Date *"
           value={formData.endDate}
-          onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+          onChange={(e) => {
+            setFormData({ ...formData, endDate: e.target.value });
+            if (errors.endDate) setErrors(prev => ({ ...prev, endDate: '' }));
+          }}
+          error={errors.endDate}
         />
       </div>
       <Input

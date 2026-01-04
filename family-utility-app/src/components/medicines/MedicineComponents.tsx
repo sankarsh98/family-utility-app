@@ -1,16 +1,14 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { 
   Pill, 
   Minus,
-  Camera,
   ExternalLink,
   Trash2,
   Edit,
   ChevronDown,
-  ChevronUp,
-  X
+  ChevronUp
 } from 'lucide-react';
 import { Medicine, FamilyMember } from '../../types';
 import { Card, Button, Badge, ProgressBar, Input, Select, TextArea } from '../ui';
@@ -57,17 +55,9 @@ export const MedicineCard: React.FC<MedicineCardProps> = ({
       <div className="p-4">
         {/* Header */}
         <div className="flex items-start gap-3" onClick={onClick}>
-          {medicine.images.length > 0 ? (
-            <img 
-              src={medicine.images[0]} 
-              alt={medicine.name}
-              className="w-16 h-16 rounded-xl object-cover border border-gold-200"
-            />
-          ) : (
-            <div className="w-16 h-16 bg-gradient-to-br from-secondary-100 to-teal-100 rounded-xl flex items-center justify-center border border-secondary-200">
-              <Pill className="w-8 h-8 text-secondary-600" />
-            </div>
-          )}
+          <div className="w-16 h-16 bg-gradient-to-br from-secondary-100 to-teal-100 rounded-xl flex items-center justify-center border border-secondary-200">
+            <Pill className="w-8 h-8 text-secondary-600" />
+          </div>
           
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between">
@@ -283,90 +273,37 @@ export const MedicineForm: React.FC<MedicineFormProps> = ({
 
   const [selectedTimings, setSelectedTimings] = useState<string[]>(medicine?.timing || []);
   const [selectedMembers, setSelectedMembers] = useState<string[]>(medicine?.assignedTo || []);
-  const [images, setImages] = useState<string[]>(medicine?.images || []);
-  const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    if (images.length >= 2) {
-      alert('Maximum 2 images allowed');
-      return;
-    }
-
-    setUploading(true);
-    try {
-      for (let i = 0; i < Math.min(files.length, 2 - images.length); i++) {
-        const file = files[i];
-        
-        // Validate file size (max 2MB for base64)
-        if (file.size > 2 * 1024 * 1024) {
-          alert('Image size should be less than 2MB');
-          continue;
-        }
-        
-        // Validate file type
-        if (!file.type.startsWith('image/')) {
-          alert('Please select an image file');
-          continue;
-        }
-        
-        // Convert to base64 data URL (avoids Firebase Storage CORS issues)
-        const base64Url = await convertToBase64(file, 600, 0.6);
-        setImages(prev => [...prev, base64Url]);
-      }
-    } catch (error: any) {
-      console.error('Error processing image:', error);
-      alert('Failed to process image. Please try a smaller image.');
-    } finally {
-      setUploading(false);
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-  };
+  // Form validation state
+  const [errors, setErrors] = useState<Record<string, string>>({});
   
-  // Helper function to convert image to base64 with compression
-  const convertToBase64 = (file: File, maxWidth: number, quality: number): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let { width, height } = img;
-          
-          if (width > maxWidth) {
-            height = (height * maxWidth) / width;
-            width = maxWidth;
-          }
-          
-          canvas.width = width;
-          canvas.height = height;
-          
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, width, height);
-          
-          // Convert to base64 data URL
-          const dataUrl = canvas.toDataURL('image/jpeg', quality);
-          resolve(dataUrl);
-        };
-        img.onerror = () => reject(new Error('Failed to load image'));
-        img.src = e.target?.result as string;
-      };
-      reader.onerror = () => reject(new Error('Failed to read file'));
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const removeImage = (indexToRemove: number) => {
-    setImages(prev => prev.filter((_, i) => i !== indexToRemove));
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    
+    if (!formData.name?.trim()) {
+      newErrors.name = 'Medicine name is required';
+    }
+    
+    if (selectedMembers.length === 0) {
+      newErrors.assignedTo = 'Please assign to at least one family member';
+    }
+    
+    if (selectedTimings.length === 0) {
+      newErrors.timing = 'Please select at least one timing';
+    }
+    
+    if (!formData.totalQuantity || formData.totalQuantity <= 0) {
+      newErrors.totalQuantity = 'Total quantity must be greater than 0';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = () => {
-    if (!formData.name) return;
+    if (!validateForm()) {
+      return;
+    }
 
     onSubmit({
       name: formData.name!,
@@ -374,7 +311,7 @@ export const MedicineForm: React.FC<MedicineFormProps> = ({
       manufacturer: formData.manufacturer,
       strength: formData.strength,
       form: formData.form as Medicine['form'],
-      images: images,
+      images: [],
       assignedTo: selectedMembers,
       dosagePerDay: formData.dosagePerDay || 1,
       quantityPerDose: formData.quantityPerDose || 1,
@@ -411,6 +348,11 @@ export const MedicineForm: React.FC<MedicineFormProps> = ({
 
   return (
     <div className="space-y-6 max-h-[70vh] overflow-y-auto px-1">
+      {/* Required fields notice */}
+      <div className="text-sm text-gray-500 flex items-center gap-1">
+        <span className="text-red-500">*</span> Required fields
+      </div>
+      
       {/* Basic Info */}
       <div className="space-y-4">
         <h4 className="font-medium text-gray-900">Basic Information</h4>
@@ -419,7 +361,11 @@ export const MedicineForm: React.FC<MedicineFormProps> = ({
           label="Medicine Name *"
           placeholder="e.g., Paracetamol"
           value={formData.name || ''}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          onChange={(e) => {
+            setFormData({ ...formData, name: e.target.value });
+            if (errors.name) setErrors(prev => ({ ...prev, name: '' }));
+          }}
+          error={errors.name}
         />
         
         <div className="grid grid-cols-2 gap-3">
@@ -461,55 +407,9 @@ export const MedicineForm: React.FC<MedicineFormProps> = ({
         </div>
       </div>
 
-      {/* Medicine Images */}
-      <div className="space-y-3">
-        <h4 className="font-medium text-gray-900">Medicine Images (Max 2)</h4>
-        <div className="flex flex-wrap gap-3">
-          {images.map((img, index) => (
-            <div key={index} className="relative w-20 h-20">
-              <img 
-                src={img} 
-                alt={`Medicine ${index + 1}`} 
-                className="w-full h-full object-cover rounded-xl border border-gray-200"
-              />
-              <button
-                onClick={() => removeImage(index)}
-                className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </div>
-          ))}
-          {images.length < 2 && (
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-primary-400 hover:text-primary-500 transition-colors"
-            >
-              {uploading ? (
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-500" />
-              ) : (
-                <>
-                  <Camera className="w-6 h-6" />
-                  <span className="text-xs mt-1">Add</span>
-                </>
-              )}
-            </button>
-          )}
-        </div>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleImageUpload}
-          className="hidden"
-          multiple
-        />
-      </div>
-
       {/* Assigned To */}
       <div className="space-y-3">
-        <h4 className="font-medium text-gray-900">Assigned To</h4>
+        <h4 className="font-medium text-gray-900">Assigned To *</h4>
         {familyMembers.length === 0 ? (
           <p className="text-sm text-gray-500 italic">
             No family members added yet. Go to the Family tab to add family members first.
@@ -519,7 +419,10 @@ export const MedicineForm: React.FC<MedicineFormProps> = ({
             {familyMembers.map(member => (
               <button
                 key={member.id}
-                onClick={() => toggleMember(member.id)}
+                onClick={() => {
+                  toggleMember(member.id);
+                  if (errors.assignedTo) setErrors(prev => ({ ...prev, assignedTo: '' }));
+                }}
                 className={`
                   px-3 py-1.5 rounded-full text-sm font-medium transition-all
                   ${selectedMembers.includes(member.id)
@@ -533,6 +436,9 @@ export const MedicineForm: React.FC<MedicineFormProps> = ({
               </button>
             ))}
           </div>
+        )}
+        {errors.assignedTo && (
+          <p className="text-sm text-red-600">{errors.assignedTo}</p>
         )}
       </div>
 
@@ -560,12 +466,15 @@ export const MedicineForm: React.FC<MedicineFormProps> = ({
 
         {/* Timing */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">When to take</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">When to take *</label>
           <div className="flex flex-wrap gap-2">
             {MEDICINE_TIMINGS.map(timing => (
               <button
                 key={timing.value}
-                onClick={() => toggleTiming(timing.value)}
+                onClick={() => {
+                  toggleTiming(timing.value);
+                  if (errors.timing) setErrors(prev => ({ ...prev, timing: '' }));
+                }}
                 className={`
                   px-3 py-1.5 rounded-full text-sm font-medium transition-all
                   ${selectedTimings.includes(timing.value)
@@ -578,6 +487,9 @@ export const MedicineForm: React.FC<MedicineFormProps> = ({
               </button>
             ))}
           </div>
+          {errors.timing && (
+            <p className="mt-1.5 text-sm text-red-600">{errors.timing}</p>
+          )}
         </div>
       </div>
 
