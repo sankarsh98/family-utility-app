@@ -19,10 +19,9 @@ jobs:
       - name: Build project
         run: npm run build
         working-directory: family-utility-app
-      - name: Deploy to Firebase Hosting Preview
-        uses: FirebaseExtended/action-hosting-deploy@v0
+      - name: Deploy Preview Channel to Firebase Hosting
+        uses: w9jds/firebase-action@v2.2.0
         with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_FAMILY_UTILITY }}
-          projectId: family-utility
-          entryPoint: family-utility-app
+          args: hosting:channel:deploy pr-${{ github.event.number }} --project family-utility --config family-utility-app/firebase.json
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
