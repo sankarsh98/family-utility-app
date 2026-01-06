@@ -11,11 +11,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: npm run build
-      - working-directory: family-utility-app
-      - uses: FirebaseExtended/action-hosting-deploy@v0
+      - name: Install dependencies
+        run: npm ci
+        working-directory: family-utility-app
+      - name: Build project
+        run: npm run build
+        working-directory: family-utility-app
+      - name: Deploy to Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_FAMILY_UTILITY }}
           channelId: live
           projectId: family-utility
+        working-directory: family-utility-app
