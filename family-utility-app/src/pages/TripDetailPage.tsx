@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { 
   ArrowLeft, 
   MapPin, 
@@ -19,6 +19,13 @@ import { useAuthStore } from '../store/authStore';
 import { Trip } from '../types';
 import toast from 'react-hot-toast';
 
+// Safe date formatting helper
+const safeFormat = (date: any, formatStr: string, fallback = 'N/A'): string => {
+  if (!date) return fallback;
+  const d = date instanceof Date ? date : new Date(date);
+  return isValid(d) ? format(d, formatStr) : fallback;
+};
+
 // Inline Trip Edit Form
 const TripEditForm: React.FC<{
   trip: Trip;
@@ -29,8 +36,8 @@ const TripEditForm: React.FC<{
     name: trip.name,
     destination: trip.destination,
     description: trip.description || '',
-    startDate: format(trip.startDate, 'yyyy-MM-dd'),
-    endDate: format(trip.endDate, 'yyyy-MM-dd'),
+    startDate: safeFormat(trip.startDate, 'yyyy-MM-dd', ''),
+    endDate: safeFormat(trip.endDate, 'yyyy-MM-dd', ''),
     totalBudget: trip.totalBudget || '',
     notes: trip.notes || '',
   });
@@ -292,7 +299,7 @@ export const TripDetailPage: React.FC = () => {
           <div className="flex items-center gap-2 mt-3 text-white/90">
             <Calendar className="w-4 h-4" />
             <span className="text-sm">
-              {format(trip.startDate, 'dd MMM yyyy')} - {format(trip.endDate, 'dd MMM yyyy')}
+              {safeFormat(trip.startDate, 'dd MMM yyyy')} - {safeFormat(trip.endDate, 'dd MMM yyyy')}
             </span>
           </div>
         </div>
@@ -381,7 +388,7 @@ export const TripDetailPage: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <div className="text-right">
                         <p className="text-sm text-gray-600">
-                          {format(ticket.journeyDate, 'dd MMM')}
+                          {safeFormat(ticket.journeyDate, 'dd MMM')}
                         </p>
                         <Badge 
                           variant={
@@ -522,7 +529,7 @@ export const TripDetailPage: React.FC = () => {
                   </div>
                   <div className="text-right">
                     <p className="text-sm text-gray-600">
-                      {format(ticket.journeyDate, 'dd MMM yyyy')}
+                      {safeFormat(ticket.journeyDate, 'dd MMM yyyy')}
                     </p>
                     <Badge 
                       variant={

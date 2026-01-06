@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { 
   MapPin, 
   Calendar, 
@@ -13,6 +13,13 @@ import {
 } from 'lucide-react';
 import { Trip, PlaceToVisit, Expense } from '../../types';
 import { Card, Button, Input, Select, TextArea, Modal, Badge } from '../ui';
+
+// Safe date formatting helper
+const safeFormat = (date: any, formatStr: string, fallback = 'N/A'): string => {
+  if (!date) return fallback;
+  const d = date instanceof Date ? date : new Date(date);
+  return isValid(d) ? format(d, formatStr) : fallback;
+};
 
 interface TripCardProps {
   trip: Trip;
@@ -65,7 +72,7 @@ export const TripCard: React.FC<TripCardProps> = ({ trip, onClick, onEdit, onDel
         <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
           <Calendar className="w-4 h-4 text-primary-500" />
           <span>
-            {format(trip.startDate, 'dd MMM')} - {format(trip.endDate, 'dd MMM yyyy')}
+            {safeFormat(trip.startDate, 'dd MMM')} - {safeFormat(trip.endDate, 'dd MMM yyyy')}
           </span>
         </div>
 
@@ -414,7 +421,7 @@ export const ExpenseTracker: React.FC<ExpenseTrackerProps> = ({
                 <span className={`px-1.5 py-0.5 rounded ${categoryColors[expense.category]}`}>
                   {expense.category}
                 </span>
-                <span>{format(expense.date, 'dd MMM')}</span>
+                <span>{safeFormat(expense.date, 'dd MMM')}</span>
                 <span>• {expense.paidBy}</span>
               </div>
             </div>
@@ -473,7 +480,7 @@ export const ExpenseTracker: React.FC<ExpenseTrackerProps> = ({
           <Input
             type="date"
             label="Date"
-            value={newExpense.date ? format(newExpense.date, 'yyyy-MM-dd') : ''}
+            value={newExpense.date ? safeFormat(newExpense.date, 'yyyy-MM-dd', '') : ''}
             onChange={(e) => setNewExpense({ ...newExpense, date: new Date(e.target.value) })}
           />
           <div className="flex gap-3 pt-4">

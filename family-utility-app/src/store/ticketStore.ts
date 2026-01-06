@@ -11,7 +11,29 @@ import {
   Timestamp 
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { TrainTicket, TicketFilters, PNRStatus, Trip } from '../types';
+import { TrainTicket, TicketFilters, PNRStatus, Trip, Expense } from '../types';
+
+// Helper to safely convert Firestore Timestamp or any date-like value to Date
+const toDate = (value: any): Date | undefined => {
+  if (!value) return undefined;
+  if (value instanceof Date) return value;
+  if (value?.toDate) return value.toDate(); // Firestore Timestamp
+  if (value?.seconds) return new Date(value.seconds * 1000); // Firestore Timestamp object
+  if (typeof value === 'string' || typeof value === 'number') {
+    const date = new Date(value);
+    return isNaN(date.getTime()) ? undefined : date;
+  }
+  return undefined;
+};
+
+// Helper to convert expense dates
+const convertExpenses = (expenses: any[]): Expense[] => {
+  if (!Array.isArray(expenses)) return [];
+  return expenses.map(expense => ({
+    ...expense,
+    date: toDate(expense.date) || new Date(),
+  }));
+};
 
 interface TicketState {
   tickets: TrainTicket[];
@@ -58,14 +80,17 @@ export const useTicketStore = create<TicketState>((set, get) => ({
       set({ loading: true, error: null });
       const q = query(collection(db, 'tickets'), orderBy('journeyDate', 'desc'));
       const snapshot = await getDocs(q);
-      const tickets = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        journeyDate: doc.data().journeyDate?.toDate(),
-        bookingDate: doc.data().bookingDate?.toDate(),
-        createdAt: doc.data().createdAt?.toDate(),
-        updatedAt: doc.data().updatedAt?.toDate(),
-      })) as TrainTicket[];
+      const tickets = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          journeyDate: toDate(data.journeyDate) || new Date(),
+          bookingDate: toDate(data.bookingDate) || new Date(),
+          createdAt: toDate(data.createdAt),
+          updatedAt: toDate(data.updatedAt),
+        };
+      }) as TrainTicket[];
       set({ tickets, loading: false });
     } catch (error: any) {
       set({ error: error.message, loading: false });
@@ -138,14 +163,18 @@ export const useTicketStore = create<TicketState>((set, get) => ({
       set({ loading: true, error: null });
       const q = query(collection(db, 'trips'), orderBy('startDate', 'desc'));
       const snapshot = await getDocs(q);
-      const trips = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        startDate: doc.data().startDate?.toDate(),
-        endDate: doc.data().endDate?.toDate(),
-        createdAt: doc.data().createdAt?.toDate(),
-        updatedAt: doc.data().updatedAt?.toDate(),
-      })) as Trip[];
+      const trips = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          startDate: toDate(data.startDate) || new Date(),
+          endDate: toDate(data.endDate) || new Date(),
+          createdAt: toDate(data.createdAt),
+          updatedAt: toDate(data.updatedAt),
+          expenses: convertExpenses(data.expenses || []),
+        };
+      }) as Trip[];
       set({ trips, loading: false });
     } catch (error: any) {
       set({ error: error.message, loading: false });

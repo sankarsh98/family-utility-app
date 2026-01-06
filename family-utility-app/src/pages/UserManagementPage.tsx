@@ -9,12 +9,15 @@ import {
   ShieldCheck, 
   Eye,
   Save,
-  AlertCircle
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react';
 import { Button, Card, Input, Select, Modal, EmptyState } from '../components/ui';
 import { useAuthStore } from '../store/authStore';
 import { UserRole } from '../types';
 import { USER_ROLES, ROLE_LABELS, ROLE_COLORS } from '../config/constants';
+import { collection, doc, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
+import { db } from '../config/firebase';
 import toast from 'react-hot-toast';
 
 interface UserEntry {
@@ -28,19 +31,50 @@ export const UserManagementPage: React.FC = () => {
   const [showAddUser, setShowAddUser] = useState(false);
   const [editingUser, setEditingUser] = useState<UserEntry | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   
   // Form state
   const [newEmail, setNewEmail] = useState('');
   const [newRole, setNewRole] = useState<UserRole>('read_only');
   const [emailError, setEmailError] = useState('');
   
-  // Load users from constants (in real app, this would be from Firestore)
+  // Load users from Firestore, fallback to constants
+  const loadUsers = async () => {
+    setLoading(true);
+    try {
+      const snapshot = await getDocs(collection(db, 'userRoles'));
+      if (snapshot.empty) {
+        // Initialize from constants if Firestore is empty
+        const userList = Object.entries(USER_ROLES).map(([email, role]) => ({
+          email,
+          role: role as UserRole,
+        }));
+        // Seed Firestore with initial users
+        for (const user of userList) {
+          await setDoc(doc(db, 'userRoles', user.email), { role: user.role });
+        }
+        setUsers(userList);
+      } else {
+        const userList = snapshot.docs.map(d => ({
+          email: d.id,
+          role: d.data().role as UserRole,
+        }));
+        setUsers(userList);
+      }
+    } catch (error) {
+      console.error('Failed to load users:', error);
+      // Fallback to constants
+      const userList = Object.entries(USER_ROLES).map(([email, role]) => ({
+        email,
+        role: role as UserRole,
+      }));
+      setUsers(userList);
+    }
+    setLoading(false);
+  };
+  
   useEffect(() => {
-    const userList = Object.entries(USER_ROLES).map(([email, role]) => ({
-      email,
-      role: role as UserRole,
-    }));
-    setUsers(userList);
+    loadUsers();
   }, []);
   
   // Validate email format
@@ -49,7 +83,7 @@ export const UserManagementPage: React.FC = () => {
     return emailRegex.test(email);
   };
   
-  const handleAddUser = () => {
+  const handleAddUser = async () => {
     setEmailError('');
     
     if (!newEmail.trim()) {
@@ -67,20 +101,22 @@ export const UserManagementPage: React.FC = () => {
       return;
     }
     
-    // In a real app, you would update Firestore here
-    setUsers(prev => [...prev, { email: newEmail.toLowerCase(), role: newRole }]);
-    toast.success(`User ${newEmail} added with ${ROLE_LABELS[newRole]} role`);
-    
-    // Note: To actually persist this, you would need to update constants.ts
-    // or use Firestore to store user roles
-    toast('Note: Restart the app for changes to take effect', { icon: 'ℹ️', duration: 5000 });
-    
-    setNewEmail('');
-    setNewRole('read_only');
-    setShowAddUser(false);
+    try {
+      const emailLower = newEmail.toLowerCase();
+      await setDoc(doc(db, 'userRoles', emailLower), { role: newRole });
+      setUsers(prev => [...prev, { email: emailLower, role: newRole }]);
+      toast.success(`User ${newEmail} added with ${ROLE_LABELS[newRole]} role`);
+      
+      setNewEmail('');
+      setNewRole('read_only');
+      setShowAddUser(false);
+    } catch (error) {
+      toast.error('Failed to add user');
+      console.error(error);
+    }
   };
   
-  const handleUpdateUser = () => {
+  const handleUpdateUser = async () => {
     if (!editingUser) return;
     
     if (editingUser.email === currentUser?.email && editingUser.role !== 'superadmin') {
@@ -88,24 +124,33 @@ export const UserManagementPage: React.FC = () => {
       return;
     }
     
-    setUsers(prev => prev.map(u => 
-      u.email === editingUser.email ? editingUser : u
-    ));
-    toast.success(`User ${editingUser.email} updated to ${ROLE_LABELS[editingUser.role]}`);
-    toast('Note: Restart the app for changes to take effect', { icon: 'ℹ️', duration: 5000 });
-    
-    setEditingUser(null);
+    try {
+      await setDoc(doc(db, 'userRoles', editingUser.email), { role: editingUser.role });
+      setUsers(prev => prev.map(u => 
+        u.email === editingUser.email ? editingUser : u
+      ));
+      toast.success(`User ${editingUser.email} updated to ${ROLE_LABELS[editingUser.role]}`);
+      setEditingUser(null);
+    } catch (error) {
+      toast.error('Failed to update user');
+      console.error(error);
+    }
   };
   
-  const handleDeleteUser = (email: string) => {
+  const handleDeleteUser = async (email: string) => {
     if (email === currentUser?.email) {
       toast.error("You can't delete your own account");
       return;
     }
     
-    setUsers(prev => prev.filter(u => u.email !== email));
-    toast.success(`User ${email} removed`);
-    toast('Note: Restart the app for changes to take effect', { icon: 'ℹ️', duration: 5000 });
+    try {
+      await deleteDoc(doc(db, 'userRoles', email));
+      setUsers(prev => prev.filter(u => u.email !== email));
+      toast.success(`User ${email} removed`);
+    } catch (error) {
+      toast.error('Failed to remove user');
+      console.error(error);
+    }
     
     setDeleteConfirm(null);
   };
@@ -147,9 +192,18 @@ export const UserManagementPage: React.FC = () => {
       <div className="bg-gradient-to-r from-maroon-500 via-maroon-600 to-primary-600 text-white px-4 py-6 relative overflow-hidden shadow-lg">
         <div className="absolute inset-0 bg-indian-pattern opacity-10"></div>
         <div className="relative">
-          <div className="flex items-center gap-3 mb-2">
-            <Users className="w-8 h-8" />
-            <h1 className="text-2xl font-bold">User Management</h1>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <Users className="w-8 h-8" />
+              <h1 className="text-2xl font-bold">User Management</h1>
+            </div>
+            <button 
+              onClick={loadUsers}
+              disabled={loading}
+              className="p-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors"
+            >
+              <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+            </button>
           </div>
           <p className="text-white/80 text-sm">Manage users and their access roles</p>
         </div>
@@ -188,7 +242,12 @@ export const UserManagementPage: React.FC = () => {
         </Card>
         
         {/* Users List */}
-        {users.length === 0 ? (
+        {loading ? (
+          <div className="text-center py-8">
+            <div className="w-10 h-10 border-4 border-primary-600 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+            <p className="text-gray-500">Loading users...</p>
+          </div>
+        ) : users.length === 0 ? (
           <EmptyState
             icon={<Users className="w-12 h-12" />}
             title="No users configured"

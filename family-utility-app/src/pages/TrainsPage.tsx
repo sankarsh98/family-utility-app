@@ -323,7 +323,10 @@ export const TrainsPage: React.FC = () => {
         size="lg"
       >
         {viewingTicket && (
-          <TicketDetailCard ticket={viewingTicket} />
+          <TicketDetailCard 
+            ticket={viewingTicket} 
+            onRefresh={(updated) => setViewingTicket(updated)}
+          />
         )}
       </Modal>
 

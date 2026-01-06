@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { 
   Train, 
   Calendar, 
@@ -8,11 +8,21 @@ import {
   ChevronRight,
   Armchair,
   Edit,
-  Trash2
+  Trash2,
+  RefreshCw
 } from 'lucide-react';
 import { TrainTicket } from '../../types';
-import { Card, TicketStatusBadge } from '../ui';
+import { Card, TicketStatusBadge, Button } from '../ui';
 import { TRAIN_CLASSES } from '../../config/constants';
+import { useTicketStore } from '../../store/ticketStore';
+import toast from 'react-hot-toast';
+
+// Safe date formatting helper
+const safeFormat = (date: any, formatStr: string, fallback = 'N/A'): string => {
+  if (!date) return fallback;
+  const d = date instanceof Date ? date : new Date(date);
+  return isValid(d) ? format(d, formatStr) : fallback;
+};
 
 interface TicketCardProps {
   ticket: TrainTicket;
@@ -89,7 +99,7 @@ export const TicketCard: React.FC<TicketCardProps> = ({ ticket, onClick, onEdit,
         <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-gold-100">
           <div className="flex items-center gap-1.5 text-sm text-gray-600">
             <Calendar className="w-4 h-4 text-primary-500" />
-            <span>{format(ticket.journeyDate, 'dd MMM yyyy')}</span>
+            <span>{safeFormat(ticket.journeyDate, 'dd MMM yyyy')}</span>
           </div>
           
           <div className="flex items-center gap-1.5 text-sm text-gray-600">
@@ -133,11 +143,62 @@ export const TicketCard: React.FC<TicketCardProps> = ({ ticket, onClick, onEdit,
 
 interface TicketDetailCardProps {
   ticket: TrainTicket;
+  onRefresh?: (ticket: TrainTicket) => void;
 }
 
 export const TicketDetailCard: React.FC<TicketDetailCardProps> = ({ 
-  ticket
+  ticket,
+  onRefresh
 }) => {
+  const [checkingPNR, setCheckingPNR] = useState(false);
+  const { checkPNRStatus, updateTicket } = useTicketStore();
+
+  const handleCheckPNR = async () => {
+    setCheckingPNR(true);
+    try {
+      const status = await checkPNRStatus(ticket.pnr);
+      if (status) {
+        // Update passenger statuses from PNR check
+        const updatedPassengers = ticket.passengers.map((p, idx) => {
+          const statusInfo = status.passengers.find(sp => sp.number === idx + 1);
+          if (statusInfo) {
+            return {
+              ...p,
+              currentStatus: statusInfo.currentStatus,
+              bookingStatus: statusInfo.bookingStatus,
+            };
+          }
+          return p;
+        });
+
+        // Determine overall ticket status from passengers
+        const allConfirmed = updatedPassengers.every(p => 
+          p.currentStatus?.includes('CNF') || p.currentStatus?.startsWith('S') || p.currentStatus?.startsWith('B')
+        );
+        const hasRAC = updatedPassengers.some(p => p.currentStatus?.includes('RAC'));
+        const hasWL = updatedPassengers.some(p => p.currentStatus?.includes('WL'));
+
+        let newStatus: TrainTicket['status'] = ticket.status;
+        if (allConfirmed) newStatus = 'CNF';
+        else if (hasRAC) newStatus = 'RAC';
+        else if (hasWL) newStatus = 'WL';
+
+        await updateTicket(ticket.id, {
+          passengers: updatedPassengers,
+          status: newStatus,
+          chartStatus: status.chartStatus as any,
+        });
+
+        toast.success('PNR status updated!');
+        onRefresh?.({ ...ticket, passengers: updatedPassengers, status: newStatus });
+      }
+    } catch (error) {
+      toast.error('Failed to check PNR status');
+      console.error(error);
+    }
+    setCheckingPNR(false);
+  };
+
   return (
     <div className="space-y-4">
       {/* Train info card */}
@@ -173,14 +234,25 @@ export const TicketDetailCard: React.FC<TicketDetailCardProps> = ({
               <p className="text-sm text-gray-500">PNR Number</p>
               <p className="text-xl font-bold text-gray-900 font-mono">{ticket.pnr}</p>
             </div>
-            <TicketStatusBadge status={ticket.status} />
+            <div className="flex items-center gap-2">
+              <TicketStatusBadge status={ticket.status} />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCheckPNR}
+                disabled={checkingPNR}
+                icon={<RefreshCw className={`w-4 h-4 ${checkingPNR ? 'animate-spin' : ''}`} />}
+              >
+                {checkingPNR ? 'Checking...' : 'Check PNR'}
+              </Button>
+            </div>
           </div>
           
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-gray-500">Journey Date</p>
               <p className="font-semibold text-gray-900">
-                {format(ticket.journeyDate, 'dd MMM yyyy')}
+                {safeFormat(ticket.journeyDate, 'dd MMM yyyy')}
               </p>
             </div>
             <div>

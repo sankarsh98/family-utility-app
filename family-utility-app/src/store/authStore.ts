@@ -5,7 +5,8 @@ import {
   onAuthStateChanged,
   User as FirebaseUser
 } from 'firebase/auth';
-import { auth, googleProvider } from '../config/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, googleProvider, db } from '../config/firebase';
 import { ALLOWED_USERS, USER_ROLES } from '../config/constants';
 import { User, UserRole } from '../types';
 
@@ -31,9 +32,35 @@ interface AuthState {
   initialize: () => () => void;
 }
 
-const getUserRole = (email: string | null): UserRole => {
+// Async function to get role from Firestore, fallback to constants
+const getUserRoleFromFirestore = async (email: string | null): Promise<UserRole> => {
   if (!email) return 'read_only';
+  try {
+    const docRef = doc(db, 'userRoles', email);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return docSnap.data().role as UserRole;
+    }
+  } catch (error) {
+    console.error('Failed to fetch role from Firestore:', error);
+  }
+  // Fallback to constants
   return USER_ROLES[email] || 'read_only';
+};
+
+// Check if user is allowed (either in Firestore or constants)
+const isUserAllowed = async (email: string | null): Promise<boolean> => {
+  if (!email) return false;
+  // Check Firestore first
+  try {
+    const docRef = doc(db, 'userRoles', email);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) return true;
+  } catch (error) {
+    console.error('Failed to check user in Firestore:', error);
+  }
+  // Fallback to constants
+  return ALLOWED_USERS.includes(email);
 };
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -67,10 +94,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const result = await signInWithPopup(auth, googleProvider);
       const firebaseUser = result.user;
       
-      // Check if user is in allowed list (testing mode)
-      const isAllowed = ALLOWED_USERS.includes(firebaseUser.email || '');
+      // Check if user is in allowed list (Firestore or constants)
+      const allowed = await isUserAllowed(firebaseUser.email);
       
-      if (!isAllowed) {
+      if (!allowed) {
         await firebaseSignOut(auth);
         set({ 
           error: 'Access denied. Your email is not in the allowed users list.',
@@ -81,12 +108,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return;
       }
       
+      // Get role from Firestore or constants
+      const role = await getUserRoleFromFirestore(firebaseUser.email);
+      
       const user: User = {
         uid: firebaseUser.uid,
         email: firebaseUser.email,
         displayName: firebaseUser.displayName,
         photoURL: firebaseUser.photoURL,
-        role: getUserRole(firebaseUser.email),
+        role,
       };
       
       set({ user, isAllowed: true, loading: false });
@@ -112,17 +142,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setError: (error) => set({ error }),
   
   initialize: () => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
-        const isAllowed = ALLOWED_USERS.includes(firebaseUser.email || '');
+        // Check if user is allowed (Firestore or constants)
+        const allowed = await isUserAllowed(firebaseUser.email);
         
-        if (isAllowed) {
+        if (allowed) {
+          // Get role from Firestore or constants
+          const role = await getUserRoleFromFirestore(firebaseUser.email);
           const user: User = {
             uid: firebaseUser.uid,
             email: firebaseUser.email,
             displayName: firebaseUser.displayName,
             photoURL: firebaseUser.photoURL,
-            role: getUserRole(firebaseUser.email),
+            role,
           };
           set({ user, isAllowed: true, loading: false });
         } else {
